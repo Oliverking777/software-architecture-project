@@ -55,17 +55,20 @@ INSERT INTO users (full_name, email, password, role) VALUES
 -- ============================================================
 \connect dsas_diseases
 
+DROP TABLE IF EXISTS diseases;
+
 CREATE TABLE diseases (
-    id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    name            VARCHAR(100) NOT NULL UNIQUE,
+    id              BIGSERIAL    PRIMARY KEY,
+    name            VARCHAR(255) NOT NULL UNIQUE,
     description     TEXT,
-    threshold_limit INT          NOT NULL DEFAULT 10,  -- nb de cas avant alerte
+    threshold_limit INT          NOT NULL DEFAULT 10,
+    updated_at      TIMESTAMP,
     created_at      TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_diseases_name ON diseases(name);
 
--- Données de test
+-- Restore test data
 INSERT INTO diseases (name, description, threshold_limit) VALUES
     ('Cholera',   'Infection intestinale aiguë causée par Vibrio cholerae', 10),
     ('Malaria',   'Maladie parasitaire transmise par les moustiques',        50),
@@ -80,11 +83,11 @@ INSERT INTO diseases (name, description, threshold_limit) VALUES
 \connect dsas_locations
 
 CREATE TABLE locations (
-    id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    region      VARCHAR(100) NOT NULL,
-    district    VARCHAR(100),
-    latitude    DECIMAL(9,6),
-    longitude   DECIMAL(9,6),
+    id        BIGSERIAL    PRIMARY KEY,        -- ← BIGSERIAL to match Long + IDENTITY
+    region    VARCHAR(100) NOT NULL,
+    district  VARCHAR(100),
+    latitude  DECIMAL(9,6),
+    longitude DECIMAL(9,6),
     UNIQUE(region, district)
 );
 
