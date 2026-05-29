@@ -29,24 +29,24 @@ GRANT ALL PRIVILEGES ON DATABASE dsas_reports   TO dsas_user;
 -- ============================================================
 \connect dsas_auth
 
+DROP TABLE IF EXISTS users;
+
 CREATE TABLE users (
-    id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    full_name   VARCHAR(100) NOT NULL,
-    email       VARCHAR(150) NOT NULL UNIQUE,
-    password    VARCHAR(255) NOT NULL,        -- hashé avec BCrypt
-    role        VARCHAR(20)  NOT NULL         -- ADMIN | HEALTH_WORKER | ANALYST
-                CHECK (role IN ('ADMIN', 'HEALTH_WORKER', 'ANALYST')),
-    active      BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+    id            BIGSERIAL     PRIMARY KEY,
+    full_name     VARCHAR(100)  NOT NULL,
+    email         VARCHAR(150)  NOT NULL UNIQUE,
+    password_hash VARCHAR(255)  NOT NULL,
+    role          VARCHAR(20)   NOT NULL
+                  CHECK (role IN ('ADMIN', 'HEALTH_WORKER', 'ANALYST')),
+    active        BOOLEAN       NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMP     NOT NULL DEFAULT NOW()
 );
 
--- Index pour accélérer la recherche par email (login)
 CREATE INDEX idx_users_email ON users(email);
 
--- Utilisateur admin par défaut (mot de passe : Admin1234! hashé)
-INSERT INTO users (full_name, email, password, role) VALUES
+INSERT INTO users (full_name, email, password_hash, role) VALUES
     ('Administrateur', 'admin@dsas.gov',
-     '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.', -- Admin1234!
+     '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
      'ADMIN');
 
 
@@ -109,23 +109,21 @@ INSERT INTO locations (region, district, latitude, longitude) VALUES
 -- ============================================================
 \connect dsas_patients
 
--- Cas patients — table principale du patient-service
--- disease_id  → résolu via API → disease-service
--- location_id → résolu via API → location-service
--- reported_by → résolu via API → auth-service
--- PAS de FK inter-base, communication via REST API UNIQUEMENT
-CREATE TABLE patient_cases (
-    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    patient_code VARCHAR(20)  NOT NULL UNIQUE,  -- code anonymisé ex: PC-2024-001
-    age          INT          NOT NULL CHECK (age > 0 AND age < 150),
-    gender       VARCHAR(10)  NOT NULL CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
-    symptoms     TEXT,
-    diagnosis    TEXT,
-    report_date  DATE         NOT NULL DEFAULT CURRENT_DATE,
-    disease_id   UUID         NOT NULL,  -- UUID de la maladie dans dsas_diseases
-    location_id  UUID         NOT NULL,  -- UUID de la localisation dans dsas_locations
-    reported_by  UUID         NOT NULL,  -- UUID de l'user dans dsas_auth
-    created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
+DROP TABLE IF EXISTS patient_cases;
+DROP TABLE IF EXISTS patients;
+
+CREATE TABLE patients (
+    id            BIGSERIAL     PRIMARY KEY,
+    patient_code  VARCHAR(20)   NOT NULL UNIQUE,
+    gender        VARCHAR(10)   NOT NULL CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
+    age           INT           NOT NULL CHECK (age > 0 AND age < 150),
+    symptoms      TEXT          NOT NULL,
+    diagnosis     TEXT          NOT NULL,
+    disease       VARCHAR(255)  NOT NULL,
+    region        VARCHAR(100)  NOT NULL,
+    street        VARCHAR(255),
+    reported_by   VARCHAR(255),
+    report_date   TIMESTAMP
 );
 
 CREATE INDEX idx_cases_disease  ON patient_cases(disease_id);
