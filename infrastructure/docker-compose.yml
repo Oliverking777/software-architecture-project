@@ -1,0 +1,120 @@
+services:
+
+  # ── Infrastructure ───────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: dsas-postgres
+    environment:
+      POSTGRES_USER: dsas_user
+      POSTGRES_PASSWORD: dsas_password
+      POSTGRES_DB: dsas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - dsas-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dsas_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: dsas-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: dsas_user
+      RABBITMQ_DEFAULT_PASS: dsas_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - dsas-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: dsas-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - dsas-network
+
+  # ── Services Python ──────────────────────────────────────────
+  analytics-service:
+    build: ../backend/analytics-service
+    container_name: dsas-analytics
+    ports:
+      - "8085:8085"
+    environment:
+      RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
+      DB_URL: postgresql+asyncpg://dsas_user:dsas_password@postgres:5432/dsas_analytics
+    networks:
+      - dsas-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notification-service:
+    build: ../backend/notification-service
+    container_name: dsas-notification
+    ports:
+      - "8087:8087"
+    environment:
+      RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+    networks:
+      - dsas-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  report-service:
+    build: ../backend/report-service
+    container_name: dsas-report
+    ports:
+      - "8086:8086"
+    environment:
+      RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
+    networks:
+      - dsas-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  geo-service:
+    build: ../backend/geo-service
+    container_name: dsas-geo
+    ports:
+      - "8088:8088"
+    environment:
+      RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
+    networks:
+      - dsas-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+networks:
+  dsas-network:
+    driver: bridge
