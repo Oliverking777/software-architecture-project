@@ -1,0 +1,152 @@
+version: '3.9'
+
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: dsas-postgres
+    environment:
+      POSTGRES_USER: dsas_user
+      POSTGRES_PASSWORD: dsas_password
+      POSTGRES_DB: dsas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - dsas-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dsas_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: dsas-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: dsas_user
+      RABBITMQ_DEFAULT_PASS: dsas_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - dsas-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: dsas-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - dsas-network
+  
+  eureka-server:
+    build: 
+      context: ../backend/discovery-service
+      dockerfile: Dockerfile
+    container_name: eureka-server
+    ports: 
+      - "8761:8761"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+  api-gateway:
+    build:
+      context: ../backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports: 
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+  auth-service:
+    build:
+      context: ../backend/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres
+      - eureka-server
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+  disease-service:
+    build:
+      context: ../backend/disease-service
+      dockerfile: Dockerfile
+    container_name: disease-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - eureka-server
+      - postgres
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+  
+  location-service:
+    build:
+      context: ../backend/location-service
+      dockerfile: Dockerfile
+    container_name: location-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      - eureka-server
+      - postgres
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+  patient-service:
+    build:
+      context: ../backend/patient-service
+      dockerfile: Dockerfile
+    container_name: patient-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - postgres
+      - rabbitmq
+      - eureka-server
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+networks:
+  dsas-network:
+    # driver: bridge
