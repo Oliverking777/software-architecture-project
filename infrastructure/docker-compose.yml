@@ -1,7 +1,6 @@
-version: '3.9'
-
 services:
 
+  # ── Infrastructure ───────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: dsas-postgres
@@ -49,6 +48,68 @@ services:
       - "8025:8025"
     networks:
       - dsas-network
+
+  # ── Services Python ──────────────────────────────────────────
+  analytics-service:
+    build: ../backend/analytics-service
+    container_name: dsas-analytics
+    ports:
+      - "8085:8085"
+    environment:
+      RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
+      DB_URL: postgresql+asyncpg://dsas_user:dsas_password@postgres:5432/dsas_analytics
+    networks:
+      - dsas-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notification-service:
+    build: ../backend/notification-service
+    container_name: dsas-notification
+    ports:
+      - "8087:8087"
+    environment:
+      RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+    networks:
+      - dsas-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  report-service:
+    build: ../backend/report-service
+    container_name: dsas-report
+    ports:
+      - "8086:8086"
+    environment:
+      RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
+    networks:
+      - dsas-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  geo-service:
+    build: ../backend/geo-service
+    container_name: dsas-geo
+    ports:
+      - "8088:8088"
+    environment:
+      RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
+    networks:
+      - dsas-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
   
   eureka-server:
     build: 
@@ -149,4 +210,4 @@ volumes:
 
 networks:
   dsas-network:
-    # driver: bridge
+    driver: bridge
