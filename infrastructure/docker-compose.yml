@@ -49,6 +49,99 @@ services:
       - "8025:8025"
     networks:
       - dsas-network
+  
+  eureka-server:
+    build: 
+      context: ../backend/discovery-service
+      dockerfile: Dockerfile
+    container_name: eureka-server
+    ports: 
+      - "8761:8761"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+  api-gateway:
+    build:
+      context: ../backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports: 
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+  auth-service:
+    build:
+      context: ../backend/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres
+      - eureka-server
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+  disease-service:
+    build:
+      context: ../backend/disease-service
+      dockerfile: Dockerfile
+    container_name: disease-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - eureka-server
+      - postgres
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+  
+  location-service:
+    build:
+      context: ../backend/location-service
+      dockerfile: Dockerfile
+    container_name: location-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      - eureka-server
+      - postgres
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
+
+  patient-service:
+    build:
+      context: ../backend/patient-service
+      dockerfile: Dockerfile
+    container_name: patient-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - postgres
+      - rabbitmq
+      - eureka-server
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - dsas-network
 
 volumes:
   postgres_data:
@@ -56,4 +149,4 @@ volumes:
 
 networks:
   dsas-network:
-    driver: bridge
+    # driver: bridge
