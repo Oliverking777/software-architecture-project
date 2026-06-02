@@ -177,6 +177,12 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      # ── Must compile BEFORE Sonar scans ──
+      - name: Build ${{ matrix.service }} for analysis
+        run: |
+          cd backend/${{ matrix.service }}
+          mvn clean package -DskipTests -B
+
       - name: Run security analysis on ${{ matrix.service }}
         run: |
           cd backend/${{ matrix.service }}
@@ -193,4 +199,7 @@ jobs:
           args: >
             -Dsonar.projectKey=disease-surveillance-backend-${{ matrix.service }}
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-            -Dsonar.sources=backend/${{ matrix.service }}/src
+            -Dsonar.sources=backend/${{ matrix.service }}/src/main/java
+            -Dsonar.java.binaries=backend/${{ matrix.service }}/target/classes
+            -Dsonar.tests=backend/${{ matrix.service }}/src/test/java
+            -Dsonar.java.test.binaries=backend/${{ matrix.service }}/target/test-classes
