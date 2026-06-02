@@ -30,7 +30,36 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
+    # ── Infrastructure services available to ALL matrix jobs ──
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: dsas_user
+          POSTGRES_PASSWORD: dsas_password
+          POSTGRES_DB: dsas_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3.12-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: dsas_user
+          RABBITMQ_DEFAULT_PASS: dsas_password
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     strategy:
       matrix:
         service:
@@ -59,9 +88,19 @@ jobs:
           mvn clean package -DskipTests -B
 
       - name: Run tests for ${{ matrix.service }}
+        env:
+          # Expose connection details as env vars so Spring picks them up
+          # via application-test.properties or system property overrides
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/dsas_db
+          SPRING_DATASOURCE_USERNAME: dsas_user
+          SPRING_DATASOURCE_PASSWORD: dsas_password
+          SPRING_RABBITMQ_HOST: localhost
+          SPRING_RABBITMQ_PORT: 5672
+          SPRING_RABBITMQ_USERNAME: dsas_user
+          SPRING_RABBITMQ_PASSWORD: dsas_password
         run: |
           cd backend/${{ matrix.service }}
-          mvn test -B
+          mvn test -B -Dspring.profiles.active=test
 
       - name: Upload test results
         if: always()
@@ -117,7 +156,7 @@ jobs:
   security-scan:
     needs: build-and-test
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         service:
