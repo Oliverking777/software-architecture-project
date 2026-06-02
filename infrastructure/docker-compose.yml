@@ -56,6 +56,7 @@ services:
     ports:
       - "8085:8085"
     environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
       RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
       DB_URL: postgresql+asyncpg://dsas_user:dsas_password@postgres:5432/dsas_analytics
     networks:
@@ -73,6 +74,7 @@ services:
     ports:
       - "8087:8087"
     environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
       RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
@@ -89,6 +91,7 @@ services:
     ports:
       - "8086:8086"
     environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
       RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
     networks:
       - dsas-network
@@ -103,6 +106,7 @@ services:
     ports:
       - "8088:8088"
     environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
       RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
     networks:
       - dsas-network
@@ -111,6 +115,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
   
+  #Services Java
   eureka-server:
     build: 
       context: ../backend/discovery-service
@@ -145,7 +150,7 @@ services:
       dockerfile: Dockerfile
     container_name: auth-service
     ports:
-      - "8082:8082"
+      - "8081:8081"
     depends_on:
       - postgres
       - eureka-server
@@ -161,7 +166,7 @@ services:
       dockerfile: Dockerfile
     container_name: disease-service
     ports:
-      - "8084:8084"
+      - "8083:8083"
     depends_on:
       - eureka-server
       - postgres
@@ -177,7 +182,7 @@ services:
       dockerfile: Dockerfile
     container_name: location-service
     ports:
-      - "8085:8085"
+      - "8084:8084"
     depends_on:
       - eureka-server
       - postgres
@@ -193,7 +198,7 @@ services:
       dockerfile: Dockerfile
     container_name: patient-service
     ports:
-      - "8083:8083"
+      - "8082:8082"
     depends_on:
       - postgres
       - rabbitmq

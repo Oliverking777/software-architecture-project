@@ -126,10 +126,10 @@ CREATE TABLE patients (
     report_date   TIMESTAMP
 );
 
-CREATE INDEX idx_cases_disease  ON patient_cases(disease_id);
-CREATE INDEX idx_cases_location ON patient_cases(location_id);
-CREATE INDEX idx_cases_date     ON patient_cases(report_date);
-CREATE INDEX idx_cases_reported ON patient_cases(reported_by);
+CREATE INDEX idx_patients_disease  ON patients(disease);
+CREATE INDEX idx_patients_region   ON patients(region);
+CREATE INDEX idx_patients_date     ON patients(report_date);
+CREATE INDEX idx_patients_reported ON patients(reported_by);
 
 
 -- ============================================================

@@ -9,8 +9,8 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 FROM python:3.14-slim
 WORKDIR /app
 COPY --from=builder /install /usr/local
-RUN groupaad -r dsas && useradd -r -g dsas dsas
+RUN groupadd -r dsas && useradd -r -g dsas dsas
 COPY app/ ./app/
 USER dsas
 EXPOSE 8087
-ENTRYPOINT ["unicorv" , "app.main.app" , "--host" , "0.0.0.0" , "--port" , "8087" ]
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8087"]
