@@ -21,7 +21,10 @@ public class JwtAuthInterceptor extends OncePerRequestFilter {
 
     private static final String[] PUBLIC_PATHS = {
             "/auth-service/login",
-            "/auth-service/register"
+            "/auth-service/register",
+            "/actuator/prometheus",
+            "/actuator/health",
+            "/actuator"
     };
 
     @Override

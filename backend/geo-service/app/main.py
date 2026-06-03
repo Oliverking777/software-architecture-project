@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from py_eureka_client import eureka_client
 from app.consumers.patient_consumer import start_geo_consumer
 from app.routers import geo
+from prometheus_fastapi_instrumentator import Instrumentator
 from app.config import EUREKA_SERVER, SERVICE_NAME, SERVICE_PORT, settings
 
 logging.basicConfig(
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
         pass
 
 app = FastAPI(title="Geo Service — DSAS", version="1.0.0", lifespan=lifespan)
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(geo.router, prefix="/api/v1/geo", tags=["Geo"])
 

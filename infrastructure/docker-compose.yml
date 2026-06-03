@@ -49,6 +49,35 @@ services:
     networks:
       - dsas-network
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dsas-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - dsas-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dsas-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: dsas_user
+      GF_SECURITY_ADMIN_PASSWORD: dsas_password
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_started
+    networks:
+      - dsas-network
+    restart: unless-stopped
+
   # ── Services Python ──────────────────────────────────────────
   analytics-service:
     build: ../backend/analytics-service
@@ -58,7 +87,7 @@ services:
     environment:
       EUREKA_SERVER: http://eureka-server:8761/eureka
       RABBITMQ_URL: amqp://dsas_user:dsas_password@rabbitmq:5672/
-      DB_URL: postgresql+asyncpg://dsas_user:dsas_password@postgres:5432/dsas_analytics
+      DB_URL: postgresql+psycopg2://dsas_user:dsas_password@postgres:5432/dsas_analytics
     networks:
       - dsas-network
     depends_on:
@@ -114,35 +143,38 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
-  
-  #Services Java
+
+  # ── Services Java ────────────────────────────────────────────
   eureka-server:
-    build: 
+    build:
       context: ../backend/discovery-service
       dockerfile: Dockerfile
     container_name: eureka-server
-    ports: 
+    ports:
       - "8761:8761"
     dns:
       - 8.8.8.8
       - 8.8.4.4
     networks:
       - dsas-network
+    restart: unless-stopped
 
   api-gateway:
     build:
       context: ../backend/api-gateway
       dockerfile: Dockerfile
     container_name: api-gateway
-    ports: 
+    ports:
       - "8080:8080"
     depends_on:
-      - eureka-server
+      eureka-server:
+        condition: service_started
     dns:
       - 8.8.8.8
       - 8.8.4.4
     networks:
       - dsas-network
+    restart: unless-stopped
 
   auth-service:
     build:
@@ -152,13 +184,16 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - postgres
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
     dns:
       - 8.8.8.8
       - 8.8.4.4
     networks:
       - dsas-network
+    restart: unless-stopped
 
   disease-service:
     build:
@@ -168,14 +203,17 @@ services:
     ports:
       - "8083:8083"
     depends_on:
-      - eureka-server
-      - postgres
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
     dns:
       - 8.8.8.8
       - 8.8.4.4
     networks:
       - dsas-network
-  
+    restart: unless-stopped
+
   location-service:
     build:
       context: ../backend/location-service
@@ -184,13 +222,16 @@ services:
     ports:
       - "8084:8084"
     depends_on:
-      - eureka-server
-      - postgres
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
     dns:
       - 8.8.8.8
       - 8.8.4.4
     networks:
       - dsas-network
+    restart: unless-stopped
 
   patient-service:
     build:
@@ -200,19 +241,25 @@ services:
     ports:
       - "8082:8082"
     depends_on:
-      - postgres
-      - rabbitmq
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
     dns:
       - 8.8.8.8
       - 8.8.4.4
     networks:
       - dsas-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   rabbitmq_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   dsas-network:
-    driver: bridge
+    driver: bridge       

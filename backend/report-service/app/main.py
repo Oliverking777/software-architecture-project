@@ -3,6 +3,7 @@ import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from py_eureka_client import eureka_client
+from  prometheus_fastapi_instrumentator import  Instrumentator
 from app.consumers.report_consumer import start_report_consumer
 from app.routers import reports
 from app.config import EUREKA_SERVER, SERVICE_NAME, SERVICE_PORT
@@ -29,6 +30,8 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 app = FastAPI(title="Report Service — DSAS", version="1.0.0", lifespan=lifespan)
+
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 

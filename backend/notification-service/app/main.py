@@ -2,6 +2,7 @@ import logging
 import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+from prometheus_fastapi_instrumentator import  Instrumentator
 from py_eureka_client import eureka_client
 from app.consumers.alert_consumer import start_alert_consumer
 from app.config import EUREKA_SERVER, SERVICE_NAME, SERVICE_PORT
@@ -27,6 +28,8 @@ async def lifespan(app: FastAPI):
         pass
 
 app = FastAPI(title="Notification Service — DSAS", version="1.0.0", lifespan=lifespan)
+
+Instrumentator().instrument(app).expose(app)
 
 @app.get("/health")
 async def health():
