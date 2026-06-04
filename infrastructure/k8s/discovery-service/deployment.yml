@@ -20,9 +20,7 @@ spec:
       containers:
         - name: discovery-service
           image: tinfeh/discovery-service:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 8761
-          env:
-            - name: JAVA_TOOL_OPTIONS
-              value: "-Xmx200m -Xms100m"
+          
