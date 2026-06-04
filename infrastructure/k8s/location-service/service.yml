@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service 
+
+metadata:
+  name: location-service
+
+spec:
+  selector:
+    app: location-service
+
+  ports:
+    - port: 8084
+      targetPort: 8084
+
+  type: NodePort
