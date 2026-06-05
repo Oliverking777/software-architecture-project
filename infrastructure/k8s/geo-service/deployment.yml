@@ -20,7 +20,7 @@ spec:
       containers:
         - name: geo-service
           image: tinfeh/geo-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 8088
           env:

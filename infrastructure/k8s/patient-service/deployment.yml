@@ -20,7 +20,7 @@ spec:
       containers:
         - name: patient-service
           image: tinfeh/patient-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 8082
           env:

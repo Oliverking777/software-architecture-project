@@ -20,7 +20,7 @@ spec:
       containers:
         - name: location-service
           image: tinfeh/location-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 8084
           env:

@@ -31,7 +31,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    # ── Infrastructure services available to ALL matrix jobs ──
     services:
       postgres:
         image: postgres:15-alpine
@@ -89,8 +88,6 @@ jobs:
 
       - name: Run tests for ${{ matrix.service }}
         env:
-          # Expose connection details as env vars so Spring picks them up
-          # via application-test.properties or system property overrides
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/dsas_db
           SPRING_DATASOURCE_USERNAME: dsas_user
           SPRING_DATASOURCE_PASSWORD: dsas_password
@@ -177,7 +174,6 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # ── Must compile BEFORE Sonar scans ──
       - name: Build ${{ matrix.service }} for analysis
         run: |
           cd backend/${{ matrix.service }}
@@ -203,3 +199,51 @@ jobs:
             -Dsonar.java.binaries=backend/${{ matrix.service }}/target/classes
             -Dsonar.tests=backend/${{ matrix.service }}/src/test/java
             -Dsonar.java.test.binaries=backend/${{ matrix.service }}/target/test-classes
+
+  deploy:
+    needs: [build-images]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy k8s manifests to VPS
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infrastructure/k8s/"
+          target: "/home/deploy/"
+
+      - name: Deploy Java services to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Apply all k8s manifests
+            kubectl apply -f /home/deploy/infrastructure/k8s/discovery-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/api-gateway/
+            kubectl apply -f /home/deploy/infrastructure/k8s/auth-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/disease-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/location-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/patient-service/
+
+            # Restart to pull latest images from Docker Hub
+            kubectl rollout restart deployment/discovery-service
+            kubectl rollout restart deployment/api-gateway
+            kubectl rollout restart deployment/auth-service
+            kubectl rollout restart deployment/disease-service
+            kubectl rollout restart deployment/location-service
+            kubectl rollout restart deployment/patient-service
+
+            # Wait for rollouts to complete
+            kubectl rollout status deployment/discovery-service --timeout=300s
+            kubectl rollout status deployment/api-gateway --timeout=300s
+            kubectl rollout status deployment/auth-service --timeout=300s
+            kubectl rollout status deployment/disease-service --timeout=300s
+            kubectl rollout status deployment/location-service --timeout=300s
+            kubectl rollout status deployment/patient-service --timeout=300s

@@ -20,7 +20,7 @@ spec:
       containers:
         - name: analytics-service
           image: tinfeh/analytics-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 8085
           env:

@@ -55,9 +55,7 @@ jobs:
       - name: Lint with flake8 - ${{ matrix.service }}
         run: |
           cd backend/${{ matrix.service }}
-          # Stop the build if there are Python syntax errors or undefined names
           flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Exit-zero treats all errors as warnings
           flake8 app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
 
       - name: Check code format with black - ${{ matrix.service }}
@@ -176,8 +174,50 @@ jobs:
           cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:buildcache,mode=max
 
-  notify:
+  deploy:
     needs: [build-images]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy k8s manifests to VPS
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infrastructure/k8s/"
+          target: "/home/deploy/"
+
+      - name: Deploy Python services to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Apply all k8s manifests
+            kubectl apply -f /home/deploy/infrastructure/k8s/analytics-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/geo-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/notification-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/report-service/
+
+            # Restart to pull latest images from Docker Hub
+            kubectl rollout restart deployment/analytics-service
+            kubectl rollout restart deployment/geo-service
+            kubectl rollout restart deployment/notification-service
+            kubectl rollout restart deployment/report-service
+
+            # Wait for rollouts to complete
+            kubectl rollout status deployment/analytics-service --timeout=300s
+            kubectl rollout status deployment/geo-service --timeout=300s
+            kubectl rollout status deployment/notification-service --timeout=300s
+            kubectl rollout status deployment/report-service --timeout=300s
+
+  notify:
+    needs: [deploy]
     runs-on: ubuntu-latest
     if: always()
 
@@ -185,4 +225,4 @@ jobs:
       - name: Notify build status
         run: |
           echo "Backend Python CI/CD pipeline completed"
-          echo "Status: ${{ needs.build-images.result }}"
+          echo "Status: ${{ needs.deploy.result }}"

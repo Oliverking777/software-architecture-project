@@ -1,0 +1,280 @@
+name: Full Deploy CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # ── Stage 1: Build and Test Java Services ─────────────────────
+  build-and-test-java:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: dsas_user
+          POSTGRES_PASSWORD: dsas_password
+          POSTGRES_DB: dsas_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3.12-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: dsas_user
+          RABBITMQ_DEFAULT_PASS: dsas_password
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    strategy:
+      matrix:
+        service:
+          - api-gateway
+          - auth-service
+          - discovery-service
+          - disease-service
+          - location-service
+          - patient-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and test ${{ matrix.service }}
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/dsas_db
+          SPRING_DATASOURCE_USERNAME: dsas_user
+          SPRING_DATASOURCE_PASSWORD: dsas_password
+          SPRING_RABBITMQ_HOST: localhost
+          SPRING_RABBITMQ_PORT: 5672
+          SPRING_RABBITMQ_USERNAME: dsas_user
+          SPRING_RABBITMQ_PASSWORD: dsas_password
+        run: |
+          cd backend/${{ matrix.service }}
+          mvn clean package -B
+          mvn test -B -Dspring.profiles.active=test
+
+  # ── Stage 2: Build and Test Python Services ───────────────────
+  build-and-test-python:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service:
+          - analytics-service
+          - geo-service
+          - notification-service
+          - report-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install and test ${{ matrix.service }}
+        run: |
+          cd backend/${{ matrix.service }}
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov flake8
+          flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+          pytest --cov=app --cov-report=xml || true
+
+  # ── Stage 3: Build and Push ALL images to Docker Hub ──────────
+  build-and-push-images:
+    needs: [build-and-test-java, build-and-test-python]
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - service: api-gateway
+            context: backend/api-gateway
+          - service: auth-service
+            context: backend/auth-service
+          - service: discovery-service
+            context: backend/discovery-service
+          - service: disease-service
+            context: backend/disease-service
+          - service: location-service
+            context: backend/location-service
+          - service: patient-service
+            context: backend/patient-service
+          - service: analytics-service
+            context: backend/analytics-service
+          - service: geo-service
+            context: backend/geo-service
+          - service: notification-service
+            context: backend/notification-service
+          - service: report-service
+            context: backend/report-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:buildcache,mode=max
+
+  # ── Stage 4: Deploy Infrastructure First ──────────────────────
+  deploy-infrastructure:
+    needs: [build-and-push-images]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy infrastructure files to VPS
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infrastructure/k8s/, infrastructure/init-db.sql"
+          target: "/home/deploy/"
+
+      - name: Deploy infrastructure services
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Create postgres configmap
+            kubectl create configmap postgres-init-sql \
+              --from-file=init.sql=/home/deploy/infrastructure/init-db.sql \
+              --dry-run=client -o yaml | kubectl apply -f -
+
+            # Deploy infrastructure
+            kubectl apply -f /home/deploy/infrastructure/k8s/postgres/
+            kubectl apply -f /home/deploy/infrastructure/k8s/rabbitmq/
+            kubectl apply -f /home/deploy/infrastructure/k8s/mailhog/
+            kubectl apply -f /home/deploy/infrastructure/k8s/prometheus/
+            kubectl apply -f /home/deploy/infrastructure/k8s/grafana/
+
+            # Wait for postgres and rabbitmq to be ready
+            kubectl rollout status deployment/postgres --timeout=300s
+            kubectl rollout status deployment/rabbitmq --timeout=300s
+
+            echo "Infrastructure is ready"
+
+  # ── Stage 5: Deploy Discovery Service First ───────────────────
+  deploy-discovery:
+    needs: [deploy-infrastructure]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy discovery service
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            kubectl apply -f /home/deploy/infrastructure/k8s/discovery-service/
+            kubectl rollout restart deployment/discovery-service
+            kubectl rollout status deployment/discovery-service --timeout=300s
+
+            echo "Discovery service is ready"
+
+  # ── Stage 6: Deploy All Other Services ────────────────────────
+  deploy-services:
+    needs: [deploy-discovery]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy all backend services
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Deploy Java services
+            kubectl apply -f /home/deploy/infrastructure/k8s/api-gateway/
+            kubectl apply -f /home/deploy/infrastructure/k8s/auth-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/disease-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/location-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/patient-service/
+
+            # Deploy Python services
+            kubectl apply -f /home/deploy/infrastructure/k8s/analytics-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/geo-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/notification-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/report-service/
+
+            # Restart all to pull latest images
+            kubectl rollout restart deployment/api-gateway
+            kubectl rollout restart deployment/auth-service
+            kubectl rollout restart deployment/disease-service
+            kubectl rollout restart deployment/location-service
+            kubectl rollout restart deployment/patient-service
+            kubectl rollout restart deployment/analytics-service
+            kubectl rollout restart deployment/geo-service
+            kubectl rollout restart deployment/notification-service
+            kubectl rollout restart deployment/report-service
+
+            # Wait for all to be ready
+            kubectl rollout status deployment/api-gateway --timeout=300s
+            kubectl rollout status deployment/auth-service --timeout=300s
+            kubectl rollout status deployment/disease-service --timeout=300s
+            kubectl rollout status deployment/location-service --timeout=300s
+            kubectl rollout status deployment/patient-service --timeout=300s
+            kubectl rollout status deployment/analytics-service --timeout=300s
+            kubectl rollout status deployment/geo-service --timeout=300s
+            kubectl rollout status deployment/notification-service --timeout=300s
+            kubectl rollout status deployment/report-service --timeout=300s
+
+            echo "All services deployed successfully"
+
+  # ── Stage 7: Notify ───────────────────────────────────────────
+  notify:
+    needs: [deploy-services]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Notify deployment status
+        run: |
+          echo "Full deployment pipeline completed"
+          echo "Infrastructure: ${{ needs.deploy-infrastructure.result }}"
+          echo "Discovery: ${{ needs.deploy-discovery.result }}"
+          echo "Services: ${{ needs.deploy-services.result }}"

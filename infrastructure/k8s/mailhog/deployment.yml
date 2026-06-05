@@ -20,7 +20,7 @@ spec:
       containers:
         - name: mailhog
           image: mailhog/mailhog:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 1025
             - containerPort: 8025

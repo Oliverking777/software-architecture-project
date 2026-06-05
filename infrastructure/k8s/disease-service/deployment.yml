@@ -20,7 +20,7 @@ spec:
       containers:
         - name: disease-service
           image: tinfeh/disease-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 8083
           env:

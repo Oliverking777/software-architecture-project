@@ -20,7 +20,7 @@ spec:
       containers:
         - name: notification-service
           image: tinfeh/notification-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 8087
           env:

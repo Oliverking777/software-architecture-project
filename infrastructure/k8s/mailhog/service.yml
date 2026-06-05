@@ -16,4 +16,4 @@ spec:
       port: 8025
       targetPort: 8025
 
-  type: NodePort
+  type: ClusterIP

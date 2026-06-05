@@ -20,7 +20,7 @@ spec:
       containers:
         - name: report-service
           image: tinfeh/report-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 8086
           env:
