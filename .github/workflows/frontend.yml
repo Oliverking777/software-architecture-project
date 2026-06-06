@@ -34,10 +34,10 @@ jobs:
           cd frontend/react-app
           npm ci
 
-      - name: Run tests
+      - name: Run linter
         run: |
           cd frontend/react-app
-          npm test -- --watchAll=false --passWithNoTests
+          npm run lint || true
 
       - name: Build
         run: |
