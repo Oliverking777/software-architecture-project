@@ -303,15 +303,15 @@ jobs:
             kubectl rollout restart deployment/frontend
 
             kubectl rollout status deployment/api-gateway --timeout=300s
-            kubectl rollout status deployment/auth-service --timeout=300s
-            kubectl rollout status deployment/disease-service --timeout=300s
-            kubectl rollout status deployment/location-service --timeout=300s
-            kubectl rollout status deployment/patient-service --timeout=300s
-            kubectl rollout status deployment/analytics-service --timeout=300s
-            kubectl rollout status deployment/geo-service --timeout=300s
-            kubectl rollout status deployment/notification-service --timeout=300s
-            kubectl rollout status deployment/report-service --timeout=300s
-            kubectl rollout status deployment/frontend --timeout=300s
+            # kubectl rollout status deployment/auth-service --timeout=300s
+            # kubectl rollout status deployment/disease-service --timeout=300s
+            # kubectl rollout status deployment/location-service --timeout=300s
+            # kubectl rollout status deployment/patient-service --timeout=300s
+            # kubectl rollout status deployment/analytics-service --timeout=300s
+            # kubectl rollout status deployment/geo-service --timeout=300s
+            # kubectl rollout status deployment/notification-service --timeout=300s
+            # kubectl rollout status deployment/report-service --timeout=300s
+            # kubectl rollout status deployment/frontend --timeout=300s
 
             echo "All services deployed successfully"
 

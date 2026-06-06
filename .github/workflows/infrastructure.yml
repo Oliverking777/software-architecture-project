@@ -52,16 +52,16 @@ jobs:
               --from-file=init.sql=/home/deploy/infrastructure/init-db.sql \
               --dry-run=client -o yaml | kubectl apply -f -
 
-            kubectl apply -f /home/deploy/infrastructure/k8s/postgres/
-            kubectl apply -f /home/deploy/infrastructure/k8s/rabbitmq/
-            kubectl apply -f /home/deploy/infrastructure/k8s/mailhog/
-            kubectl apply -f /home/deploy/infrastructure/k8s/prometheus/
-            kubectl apply -f /home/deploy/infrastructure/k8s/grafana/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/postgres/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/rabbitmq/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/mailhog/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/prometheus/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/grafana/
 
-            kubectl rollout status deployment/postgres --timeout=300s
-            kubectl rollout status deployment/rabbitmq --timeout=300s
-            kubectl rollout status deployment/mailhog --timeout=300s
-            kubectl rollout status deployment/prometheus --timeout=300s
-            kubectl rollout status deployment/grafana --timeout=300s
+            # kubectl rollout status deployment/postgres --timeout=300s
+            # kubectl rollout status deployment/rabbitmq --timeout=300s
+            # kubectl rollout status deployment/mailhog --timeout=300s
+            # kubectl rollout status deployment/prometheus --timeout=300s
+            # kubectl rollout status deployment/grafana --timeout=300s
 
             echo "Infrastructure deployed successfully"

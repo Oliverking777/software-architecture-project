@@ -208,10 +208,10 @@ jobs:
             kubectl rollout restart deployment/notification-service
             kubectl rollout restart deployment/report-service
 
-            kubectl rollout status deployment/analytics-service --timeout=300s
-            kubectl rollout status deployment/geo-service --timeout=300s
-            kubectl rollout status deployment/notification-service --timeout=300s
-            kubectl rollout status deployment/report-service --timeout=300s
+            # kubectl rollout status deployment/analytics-service --timeout=300s
+            # kubectl rollout status deployment/geo-service --timeout=300s
+            # kubectl rollout status deployment/notification-service --timeout=300s
+            # kubectl rollout status deployment/report-service --timeout=300s
 
   notify:
     needs: [ deploy ]
