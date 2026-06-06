@@ -102,9 +102,40 @@ jobs:
           flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
           pytest --cov=app --cov-report=xml || true
 
-  # ── Stage 3: Build and Push ALL images to Docker Hub ──────────
+  # ── Stage 3: Build and Test Frontend ─────────────────────────
+  build-and-test-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/react-app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend/react-app
+          npm ci
+
+      - name: Lint
+        run: |
+          cd frontend/react-app
+          npm run lint || true
+
+      - name: Build
+        run: |
+          cd frontend/react-app
+          npm run build
+        env:
+          REACT_APP_API_URL: https://dsas-app.tsgpcorporation.com/api
+
+  # ── Stage 4: Build and Push ALL images ────────────────────────
   build-and-push-images:
-    needs: [build-and-test-java, build-and-test-python]
+    needs: [build-and-test-java, build-and-test-python, build-and-test-frontend]
     runs-on: ubuntu-latest
 
     strategy:
@@ -130,6 +161,8 @@ jobs:
             context: backend/notification-service
           - service: report-service
             context: backend/report-service
+          - service: frontend
+            context: frontend/react-app
 
     steps:
       - uses: actions/checkout@v4
@@ -154,7 +187,7 @@ jobs:
           cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:buildcache,mode=max
 
-  # ── Stage 4: Deploy Infrastructure First ──────────────────────
+  # ── Stage 5: Deploy Infrastructure ────────────────────────────
   deploy-infrastructure:
     needs: [build-and-push-images]
     runs-on: ubuntu-latest
@@ -178,30 +211,38 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Create postgres configmap
             kubectl create configmap postgres-init-sql \
               --from-file=init.sql=/home/deploy/infrastructure/init-db.sql \
               --dry-run=client -o yaml | kubectl apply -f -
 
-            # Deploy infrastructure
             kubectl apply -f /home/deploy/infrastructure/k8s/postgres/
             kubectl apply -f /home/deploy/infrastructure/k8s/rabbitmq/
             kubectl apply -f /home/deploy/infrastructure/k8s/mailhog/
             kubectl apply -f /home/deploy/infrastructure/k8s/prometheus/
             kubectl apply -f /home/deploy/infrastructure/k8s/grafana/
 
-            # Wait for postgres and rabbitmq to be ready
             kubectl rollout status deployment/postgres --timeout=300s
             kubectl rollout status deployment/rabbitmq --timeout=300s
 
             echo "Infrastructure is ready"
 
-  # ── Stage 5: Deploy Discovery Service First ───────────────────
+  # ── Stage 6: Deploy Discovery Service ─────────────────────────
   deploy-discovery:
     needs: [deploy-infrastructure]
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy discovery manifests to VPS
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infrastructure/k8s/discovery-service/"
+          target: "/home/deploy/"
+
       - name: Deploy discovery service
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -212,15 +253,25 @@ jobs:
             kubectl apply -f /home/deploy/infrastructure/k8s/discovery-service/
             kubectl rollout restart deployment/discovery-service
             kubectl rollout status deployment/discovery-service --timeout=300s
-
             echo "Discovery service is ready"
 
-  # ── Stage 6: Deploy All Other Services ────────────────────────
+  # ── Stage 7: Deploy All Other Services ────────────────────────
   deploy-services:
     needs: [deploy-discovery]
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy service manifests to VPS
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infrastructure/k8s/"
+          target: "/home/deploy/"
+
       - name: Deploy all backend services
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -228,20 +279,17 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Deploy Java services
             kubectl apply -f /home/deploy/infrastructure/k8s/api-gateway/
             kubectl apply -f /home/deploy/infrastructure/k8s/auth-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/disease-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/location-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/patient-service/
-
-            # Deploy Python services
             kubectl apply -f /home/deploy/infrastructure/k8s/analytics-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/geo-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/notification-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/report-service/
+            kubectl apply -f /home/deploy/infrastructure/k8s/frontend/
 
-            # Restart all to pull latest images
             kubectl rollout restart deployment/api-gateway
             kubectl rollout restart deployment/auth-service
             kubectl rollout restart deployment/disease-service
@@ -251,8 +299,8 @@ jobs:
             kubectl rollout restart deployment/geo-service
             kubectl rollout restart deployment/notification-service
             kubectl rollout restart deployment/report-service
+            kubectl rollout restart deployment/frontend
 
-            # Wait for all to be ready
             kubectl rollout status deployment/api-gateway --timeout=300s
             kubectl rollout status deployment/auth-service --timeout=300s
             kubectl rollout status deployment/disease-service --timeout=300s
@@ -262,12 +310,40 @@ jobs:
             kubectl rollout status deployment/geo-service --timeout=300s
             kubectl rollout status deployment/notification-service --timeout=300s
             kubectl rollout status deployment/report-service --timeout=300s
+            kubectl rollout status deployment/frontend --timeout=300s
 
             echo "All services deployed successfully"
 
-  # ── Stage 7: Notify ───────────────────────────────────────────
-  notify:
+  # ── Stage 8: Deploy Ingress ────────────────────────────────────
+  deploy-ingress:
     needs: [deploy-services]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy ingress manifests to VPS
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infrastructure/k8s/ingress/"
+          target: "/home/deploy/"
+
+      - name: Apply ingress and middleware
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            kubectl apply -f /home/deploy/infrastructure/k8s/ingress/
+            echo "Ingress deployed successfully"
+
+  # ── Stage 9: Notify ───────────────────────────────────────────
+  notify:
+    needs: [deploy-ingress]
     runs-on: ubuntu-latest
     if: always()
 
@@ -278,3 +354,4 @@ jobs:
           echo "Infrastructure: ${{ needs.deploy-infrastructure.result }}"
           echo "Discovery: ${{ needs.deploy-discovery.result }}"
           echo "Services: ${{ needs.deploy-services.result }}"
+          echo "Ingress: ${{ needs.deploy-ingress.result }}"
