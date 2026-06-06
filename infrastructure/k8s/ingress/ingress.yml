@@ -3,9 +3,15 @@ kind: Ingress
 metadata:
   name: dsas-ingress
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      default-strip-eureka-prefix@kubernetescrd,
+      default-strip-grafana-prefix@kubernetescrd,
+      default-strip-prometheus-prefix@kubernetescrd,
+      default-strip-rabbitmq-prefix@kubernetescrd,
+      default-strip-mailhog-prefix@kubernetescrd
 spec:
   tls:
     - hosts:

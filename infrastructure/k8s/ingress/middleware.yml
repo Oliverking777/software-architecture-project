@@ -1,0 +1,44 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-eureka-prefix
+spec:
+  stripPrefix:
+    prefixes:
+      - /eureka
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-grafana-prefix
+spec:
+  stripPrefix:
+    prefixes:
+      - /grafana
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prometheus-prefix
+spec:
+  stripPrefix:
+    prefixes:
+      - /prometheus
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-rabbitmq-prefix
+spec:
+  stripPrefix:
+    prefixes:
+      - /rabbitmq
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-mailhog-prefix
+spec:
+  stripPrefix:
+    prefixes:
+      - /mailhog
