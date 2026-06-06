@@ -262,7 +262,7 @@ services:
       dockerfile: Dockerfile
     container_name: dsas-frontend
     ports:
-      - "3001:80"
+      - "3001:5173"
     depends_on:
       - api-gateway
       - analytics-service
