@@ -1,14 +1,7 @@
-import { useState } from "react";
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Card, Badge, Spinner, Modal, Input, Alert, EmptyState } from "../components/UI.jsx";
-import { PageHeader, PrimaryBtn, SecondaryBtn } from "../components/UI.jsx";
-import { diseaseAPI, locationAPI, analyticsAPI, reportAPI, geoAPI } from "../services/api.js";
+import { Card, Badge } from "../components/UI.jsx";
+import { PageHeader, PrimaryBtn } from "../components/UI.jsx";
 
-const COLORS = ["#0EA5E9","#EF4444","#14B8A6","#F59E0B","#8B5CF6","#10B981","#EC4899"];
-const fmtNum = (n) => n?.toLocaleString() ?? "—";
-
-// ── PROFILE ───────────────────────────────────────────────────
-export function ProfilePage({ user, onLogout }) {
+export default function ProfilePage({ user, onLogout }) {
   return (
     <div className="p-6 max-w-2xl space-y-5">
       <PageHeader title="Profile" subtitle="Your account information" />
@@ -45,16 +38,19 @@ export function ProfilePage({ user, onLogout }) {
           </button>
         </div>
       </Card>
+
       <Card className="p-5">
         <p className="font-semibold text-slate-700 mb-4">System Architecture</p>
         <div className="grid grid-cols-2 gap-3 text-sm">
           {[
-            { label:"patient-service",  value:":8082 → /patient-service" },
-            { label:"disease-service",  value:":8083 → /disease-service" },
-            { label:"location-service", value:":8084 → /location-service" },
-            { label:"analytics-service",value:":8085 (Python FastAPI)" },
-            { label:"report-service",   value:":8086 (Python FastAPI)" },
-            { label:"geo-service",      value:":8088 (Python FastAPI)" },
+            { label:"api-gateway",        value:":8080 → Point d'entree JWT" },
+            { label:"auth-service",       value:":8081 → /auth-service/**" },
+            { label:"patient-service",    value:":8082 → /patient-service/**" },
+            { label:"disease-service",    value:":8083 → /disease-service/**" },
+            { label:"location-service",   value:":8084 → /location-service/**" },
+            { label:"analytics-service",  value:":8085 (Python FastAPI)" },
+            { label:"report-service",     value:":8086 (Python FastAPI)" },
+            { label:"geo-service",        value:":8088 (Python FastAPI)" },
           ].map(s => (
             <div key={s.label} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
               <span className="text-slate-500 text-xs font-semibold">{s.label}</span>
@@ -63,8 +59,24 @@ export function ProfilePage({ user, onLogout }) {
           ))}
         </div>
       </Card>
+
+      <Card className="p-5">
+        <p className="font-semibold text-slate-700 mb-4">RabbitMQ Flow</p>
+        <div className="space-y-2">
+          {[
+            { step:"1", text:"POST /patient-service → patient-service crée le patient" },
+            { step:"2", text:"patient-service publie sur patient.exchange (RabbitMQ)" },
+            { step:"3", text:"analytics-service consomme → incrémente case_counts" },
+            { step:"4", text:"Si seuil dépassé → alerte générée sur /api/v1/analytics/alerts" },
+            { step:"5", text:"notification-service consomme alert.events → email via MailHog" },
+          ].map(s => (
+            <div key={s.step} className="flex items-start gap-3">
+              <span className="w-5 h-5 rounded-full bg-sky-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{s.step}</span>
+              <p className="text-xs text-slate-600">{s.text}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }
-
-export default ProfilePage

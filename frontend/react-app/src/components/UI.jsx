@@ -15,6 +15,7 @@ export const Badge = ({ level }) => {
     High:"bg-orange-100 text-orange-700 border border-orange-200",
     HIGH:"bg-orange-100 text-orange-700 border border-orange-200",
     Medium:"bg-yellow-100 text-yellow-700 border border-yellow-200",
+    MEDIUM:"bg-yellow-100 text-yellow-700 border border-yellow-200",
     Low:"bg-blue-100 text-blue-700 border border-blue-200",
     ADMIN:"bg-purple-100 text-purple-700 border border-purple-200",
     ANALYST:"bg-teal-100 text-teal-700 border border-teal-200",
@@ -73,9 +74,9 @@ export const PrimaryBtn = ({ children, onClick, className = "", disabled = false
   </button>
 );
 
-export const SecondaryBtn = ({ children, onClick, className = "" }) => (
-  <button onClick={onClick}
-    className={`flex items-center gap-1.5 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors ${className}`}>
+export const SecondaryBtn = ({ children, onClick, className = "", disabled = false }) => (
+  <button onClick={onClick} disabled={disabled}
+    className={`flex items-center gap-1.5 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50 ${className}`}>
     {children}
   </button>
 );

@@ -22,7 +22,7 @@ export default function LoginPage({ onLogin }) {
         setError("Login failed. Check your credentials.");
       }
     } catch (err) {
-      setError(err.message || "Connection error. Using demo mode.");
+      setError(err.message || "Connection error.");
       if (email.includes("@")) {
         const role = email.startsWith("admin") ? "ADMIN"
           : email.startsWith("analyst") ? "ANALYST" : "HEALTH_WORKER";
@@ -45,7 +45,7 @@ export default function LoginPage({ onLogin }) {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-16">
             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
-              <span className="text-white">⚕</span>
+              <span className="text-white text-lg">⚕</span>
             </div>
             <div>
               <p className="text-white font-bold">DSAS</p>
@@ -61,7 +61,7 @@ export default function LoginPage({ onLogin }) {
               National Disease<br />Intelligence<br />Platform
             </h1>
             <p className="text-white/75 text-base leading-relaxed max-w-sm">
-              Monitor outbreaks, detect anomalies, and coordinate public health response across all regions in real time.
+              Monitor outbreaks, detect anomalies, and coordinate public health response across all 10 regions in real time.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -91,9 +91,7 @@ export default function LoginPage({ onLogin }) {
               </div>
             </div>
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-slate-700">Password</label>
-              </div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
               <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-3 focus-within:ring-2 focus-within:ring-sky-500 transition-all">
                 <span className="text-slate-400">🔒</span>
                 <input type={showPw ? "text" : "password"} value={password} onChange={e=>setPassword(e.target.value)}

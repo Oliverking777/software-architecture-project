@@ -69,18 +69,6 @@ export const patientAPI = {
       return res.ok;
     } catch { return false; }
   },
-  getStatsByDisease: async () => {
-    try {
-      const res = await authFetch(`${GATEWAY}/patient-service/stats/grouped-by-disease`);
-      return res.ok ? await res.json() : null;
-    } catch { return null; }
-  },
-  getStatsByRegion: async () => {
-    try {
-      const res = await authFetch(`${GATEWAY}/patient-service/stats/grouped-by-region`);
-      return res.ok ? await res.json() : null;
-    } catch { return null; }
-  },
   getTotal: async () => {
     try {
       const res = await authFetch(`${GATEWAY}/patient-service/stats/total`);
@@ -108,9 +96,10 @@ export const diseaseAPI = {
 };
 
 export const locationAPI = {
-  getAll: async () => {
+  getAll: async (params = {}) => {
     try {
-      const res = await authFetch(`${GATEWAY}/location-service`);
+      const query = new URLSearchParams(params).toString();
+      const res = await authFetch(`${GATEWAY}/location-service?${query}`);
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
@@ -135,8 +124,12 @@ export const analyticsAPI = {
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
-  // alerts n'existe pas encore dans analytics-service
-  getAlerts: async () => { return { alerts: [], count: 0 }; },
+  getAlerts: async () => {
+    try {
+      const res = await fetch(`${ANALYTICS}/api/v1/analytics/alerts`);
+      return res.ok ? await res.json() : null;
+    } catch { return null; }
+  },
 };
 
 export const geoAPI = {

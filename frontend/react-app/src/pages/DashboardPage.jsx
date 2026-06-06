@@ -20,24 +20,24 @@ const WEEKLY = [
 export default function DashboardPage({ setPage }) {
   const [analyticsStats, setAnalyticsStats] = useState(null);
   const [analyticsAlerts, setAnalyticsAlerts] = useState([]);
-  const [patientStats, setPatientStats] = useState(null);
-  const [regionStats, setRegionStats] = useState(null);
-  const [totalPatients, setTotalPatients] = useState(null);
+  const [patients, setPatients] = useState([]);
+  const [diseases, setDiseases] = useState([]);
+  const [totalPatients, setTotalPatients] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [stats, alerts, byDisease, byRegion, total] = await Promise.all([
+      const [stats, alerts, patientsData, diseasesData, total] = await Promise.all([
         analyticsAPI.getStats(),
         analyticsAPI.getAlerts(),
-        patientAPI.getStatsByDisease(),
-        patientAPI.getStatsByRegion(),
+        patientAPI.getAll({ size: 100 }),
+        diseaseAPI.getAll({ size: 100 }),
         patientAPI.getTotal(),
       ]);
       if (stats) setAnalyticsStats(stats);
       if (alerts) setAnalyticsAlerts(alerts.alerts || []);
-      if (byDisease) setPatientStats(byDisease);
-      if (byRegion) setRegionStats(byRegion);
+      if (patientsData?.content) setPatients(patientsData.content);
+      if (diseasesData?.content) setDiseases(diseasesData.content);
       if (total !== null) setTotalPatients(total);
       setLoading(false);
     };
@@ -46,17 +46,18 @@ export default function DashboardPage({ setPage }) {
     return () => clearInterval(interval);
   }, []);
 
-  const diseaseChartData = patientStats?.content?.map(d => ({
-    name: d.disease || d.name,
-    value: d.count || d.total || 0,
-  })) || [];
+  const diseaseMap = patients.reduce((acc, p) => {
+    acc[p.disease] = (acc[p.disease] || 0) + 1;
+    return acc;
+  }, {});
 
-  const regionChartData = regionStats?.content?.map(r => ({
-    region: r.region,
-    cases: r.count || r.total || 0,
-  })) || [];
+  const regionMap = patients.reduce((acc, p) => {
+    acc[p.region] = (acc[p.region] || 0) + 1;
+    return acc;
+  }, {});
 
-  const totalCases = totalPatients || 0;
+  const diseaseChartData = Object.entries(diseaseMap).map(([name, value]) => ({ name, value }));
+  const regionChartData = Object.entries(regionMap).map(([region, cases]) => ({ region, cases }));
   const activeAlerts = analyticsAlerts.length;
 
   return (
@@ -72,20 +73,13 @@ export default function DashboardPage({ setPage }) {
         }
       />
 
-      {loading && (
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="w-2 h-2 bg-sky-500 rounded-full animate-pulse" />
-          Loading live data from backend...
-        </div>
-      )}
-
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard label="Total Patients" value={fmtNum(totalCases)}  icon="👥" sub="From patient-service" color="#0EA5E9" />
-        <StatCard label="Active Alerts"  value={activeAlerts}        icon="⚠"  sub="From analytics"      color="#EF4444" />
-        <StatCard label="Diseases"       value={diseaseChartData.length || "—"} icon="🦠" sub="Tracked"  color="#14B8A6" />
-        <StatCard label="Regions"        value={regionChartData.length || "—"}  icon="📍" sub="Affected"  color="#F59E0B" />
-        <StatCard label="Services"       value="8/8"                 icon="✅" sub="All healthy"          color="#10B981" />
-        <StatCard label="Monitoring"     value="24/7"                icon="📡" sub="Continuous"           color="#8B5CF6" />
+        <StatCard label="Total Patients"  value={fmtNum(totalPatients)}              icon="👥" sub="patient-service"  color="#0EA5E9" />
+        <StatCard label="Active Alerts"   value={activeAlerts}                       icon="⚠"  sub="analytics-service" color="#EF4444" />
+        <StatCard label="Diseases"        value={diseases.length || "—"}             icon="🦠" sub="Tracked"           color="#14B8A6" />
+        <StatCard label="Regions"         value={Object.keys(regionMap).length || "—"} icon="📍" sub="Affected"       color="#F59E0B" />
+        <StatCard label="Services"        value="8/8"                                icon="✅" sub="All healthy"       color="#10B981" />
+        <StatCard label="Monitoring"      value="24/7"                               icon="📡" sub="Continuous"        color="#8B5CF6" />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -118,7 +112,7 @@ export default function DashboardPage({ setPage }) {
         <Card className="p-5">
           <p className="font-semibold text-slate-700 mb-0.5">Disease Distribution</p>
           <p className="text-xs text-slate-400 mb-2">
-            {diseaseChartData.length > 0 ? "Live from patient-service" : "Loading..."}
+            {diseaseChartData.length > 0 ? `${diseaseChartData.length} diseases · Live` : "Loading..."}
           </p>
           {diseaseChartData.length > 0 ? (
             <>
@@ -148,17 +142,19 @@ export default function DashboardPage({ setPage }) {
         <Card className="col-span-2 p-5">
           <p className="font-semibold text-slate-700 mb-0.5">Cases by Region</p>
           <p className="text-xs text-slate-400 mb-4">
-            {regionChartData.length > 0 ? "Live from patient-service" : "Loading..."}
+            {regionChartData.length > 0 ? `${regionChartData.length} regions · Live` : "Loading..."}
           </p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={regionChartData.length > 0 ? regionChartData : []} barSize={28}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-              <XAxis dataKey="region" tick={{ fontSize:11, fill:"#94A3B8" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize:11, fill:"#94A3B8" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius:12, fontSize:12 }} />
-              <Bar dataKey="cases" fill="#0EA5E9" radius={[6,6,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {regionChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={regionChartData} barSize={28}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                <XAxis dataKey="region" tick={{ fontSize:11, fill:"#94A3B8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize:11, fill:"#94A3B8" }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius:12, fontSize:12 }} />
+                <Bar dataKey="cases" fill="#0EA5E9" radius={[6,6,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <Spinner />}
         </Card>
 
         <Card className="p-5">
@@ -169,16 +165,21 @@ export default function DashboardPage({ setPage }) {
             </span>
           </div>
           {analyticsAlerts.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {analyticsAlerts.slice(0,4).map((a, i) => (
-                <div key={i} className="flex gap-2.5">
+                <div key={i} className="flex gap-2.5 p-2 rounded-xl bg-red-50">
                   <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 bg-red-500" />
                   <div>
-                    <p className="text-xs font-medium text-slate-700 capitalize">{a.disease} — {a.region}</p>
-                    <p className="text-xs text-slate-400">{a.cases} cas · {a.severity}</p>
+                    <p className="text-xs font-semibold text-slate-700 capitalize">{a.disease} — {a.region}</p>
+                    <p className="text-xs text-slate-500">{a.cases} cas · <span className={`font-bold ${a.severity==="CRITICAL"?"text-red-600":"text-orange-500"}`}>{a.severity}</span></p>
                   </div>
                 </div>
               ))}
+              {analyticsAlerts.length > 4 && (
+                <button onClick={() => setPage("alerts")} className="text-xs text-sky-600 hover:underline w-full text-center">
+                  +{analyticsAlerts.length - 4} more alerts →
+                </button>
+              )}
             </div>
           ) : (
             <div className="text-center py-6">
@@ -193,10 +194,10 @@ export default function DashboardPage({ setPage }) {
         <p className="font-semibold text-slate-700 mb-4">Service Status</p>
         <div className="grid grid-cols-4 gap-3">
           {[
-            { name:"Analytics",     port:8085, url:"/analytics/health" },
-            { name:"Notifications", port:8087, url:"/notifications/health" },
-            { name:"Reports",       port:8086, url:"/reports/health" },
-            { name:"Geo",           port:8088, url:"/geo/health" },
+            { name:"Analytics",     url:"/analytics/health" },
+            { name:"Notifications", url:"/notifications/health" },
+            { name:"Reports",       url:"/reports/health" },
+            { name:"Geo",           url:"/geo/health" },
           ].map(s => <ServiceStatus key={s.name} {...s} />)}
         </div>
       </Card>
@@ -204,7 +205,7 @@ export default function DashboardPage({ setPage }) {
   );
 }
 
-function ServiceStatus({ name, port, url }) {
+function ServiceStatus({ name, url }) {
   const [status, setStatus] = useState("checking");
   useEffect(() => {
     fetch(url)
@@ -216,9 +217,9 @@ function ServiceStatus({ name, port, url }) {
       <span className={`w-2.5 h-2.5 rounded-full ${status==="up"?"bg-green-500 animate-pulse":status==="down"?"bg-red-500":"bg-yellow-400 animate-pulse"}`} />
       <div>
         <p className="text-xs font-semibold text-slate-700">{name}</p>
-        <p className="text-xs text-slate-400">:{port}</p>
+        <p className="text-xs text-slate-400">{url}</p>
       </div>
-      <span className={`ml-auto text-xs font-medium ${status==="up"?"text-green-600":status==="down"?"text-red-500":"text-yellow-600"}`}>
+      <span className={`ml-auto text-xs font-bold ${status==="up"?"text-green-600":status==="down"?"text-red-500":"text-yellow-600"}`}>
         {status==="up"?"UP":status==="down"?"DOWN":"..."}
       </span>
     </div>
