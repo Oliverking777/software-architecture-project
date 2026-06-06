@@ -196,7 +196,7 @@ public class PatientController {
     public ResponseEntity<Page<PatientDto.DiseaseCount>> getGroupedByDisease(
             @RequestParam(defaultValue = "0")          int page,
             @RequestParam(defaultValue = "10")         int size,
-            @RequestParam(defaultValue = "count,desc") String sort) {
+            @RequestParam(defaultValue = "disease,asc") String sort) {
 
         return ResponseEntity.ok(patientService.getCasesGroupedByDisease(buildPageable(page, size, sort)));
     }
@@ -208,7 +208,7 @@ public class PatientController {
     public ResponseEntity<Page<PatientDto.RegionCount>> getGroupedByRegion(
             @RequestParam(defaultValue = "0")          int page,
             @RequestParam(defaultValue = "10")         int size,
-            @RequestParam(defaultValue = "count,desc") String sort) {
+            @RequestParam(defaultValue = "region,asc") String sort) {
 
         return ResponseEntity.ok(patientService.getCasesGroupedByRegion(buildPageable(page, size, sort)));
     }
