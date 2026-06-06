@@ -1,4 +1,4 @@
-const GATEWAY   = "https://dsas-app.tsgpcorporation.com/api";
+const GATEWAY   = "/gateway";
 const ANALYTICS = "/analytics";
 const REPORTS   = "/reports";
 const GEO       = "/geo";

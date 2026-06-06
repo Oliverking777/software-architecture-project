@@ -245,14 +245,14 @@ jobs:
 
             # Restart all other Java services
             kubectl rollout restart deployment/api-gateway
-            # kubectl rollout restart deployment/auth-service
+            kubectl rollout restart deployment/auth-service
             # kubectl rollout restart deployment/disease-service
             # kubectl rollout restart deployment/location-service
             # kubectl rollout restart deployment/patient-service
 
             # Wait for rollouts to complete
             kubectl rollout status deployment/api-gateway --timeout=300s
-            # kubectl rollout status deployment/auth-service --timeout=300s
+            kubectl rollout status deployment/auth-service --timeout=300s
             # kubectl rollout status deployment/disease-service --timeout=300s
             # kubectl rollout status deployment/location-service --timeout=300s
             # kubectl rollout status deployment/patient-service --timeout=300s

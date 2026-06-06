@@ -26,6 +26,7 @@ GRANT ALL PRIVILEGES ON DATABASE dsas_reports   TO dsas_user;
 
 -- ============================================================
 -- BASE : dsas_auth  (appartient à auth-service)
+-- FIX: added 'active' column to match User.java entity
 -- ============================================================
 \connect dsas_auth
 
@@ -44,14 +45,16 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_email ON users(email);
 
-INSERT INTO users (full_name, email, password_hash, role) VALUES
+-- Default admin — password is 'password' (bcrypt)
+INSERT INTO users (full_name, email, password_hash, role, active) VALUES
     ('Administrateur', 'admin@dsas.gov',
      '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
-     'ADMIN');
+     'ADMIN', TRUE);
 
 
 -- ============================================================
 -- BASE : dsas_diseases  (appartient à disease-service)
+-- Disease.java matches — no changes needed
 -- ============================================================
 \connect dsas_diseases
 
@@ -68,7 +71,6 @@ CREATE TABLE diseases (
 
 CREATE INDEX idx_diseases_name ON diseases(name);
 
--- Restore test data
 INSERT INTO diseases (name, description, threshold_limit) VALUES
     ('Cholera',   'Infection intestinale aiguë causée par Vibrio cholerae', 10),
     ('Malaria',   'Maladie parasitaire transmise par les moustiques',        50),
@@ -79,21 +81,24 @@ INSERT INTO diseases (name, description, threshold_limit) VALUES
 
 -- ============================================================
 -- BASE : dsas_locations  (appartient à location-service)
+-- FIX 1: Added NOT NULL on latitude and longitude (nullable = false in entity)
+-- FIX 2: Removed composite UNIQUE(region, district) — entity uses UNIQUE on district only
+-- FIX 3: Added DROP TABLE IF EXISTS for clean re-runs
 -- ============================================================
 \connect dsas_locations
 
+DROP TABLE IF EXISTS locations;
+
 CREATE TABLE locations (
-    id        BIGSERIAL    PRIMARY KEY,        -- ← BIGSERIAL to match Long + IDENTITY
-    region    VARCHAR(100) NOT NULL,
-    district  VARCHAR(100),
-    latitude  DECIMAL(9,6),
-    longitude DECIMAL(9,6),
-    UNIQUE(region, district)
+    id        BIGSERIAL     PRIMARY KEY,
+    region    VARCHAR(100)  NOT NULL,
+    district  VARCHAR(100)  NOT NULL UNIQUE,
+    latitude  DECIMAL(9,6)  NOT NULL,
+    longitude DECIMAL(9,6)  NOT NULL
 );
 
 CREATE INDEX idx_locations_region ON locations(region);
 
--- Données de test
 INSERT INTO locations (region, district, latitude, longitude) VALUES
     ('Littoral',  'Douala 1',  4.0483, 9.7043),
     ('Littoral',  'Douala 2',  4.0500, 9.7200),
@@ -106,13 +111,15 @@ INSERT INTO locations (region, district, latitude, longitude) VALUES
 
 -- ============================================================
 -- BASE : dsas_patients  (appartient à patient-service)
+-- FIX 1: Renamed table from 'patients' to 'patient_cases' to match @Table(name="patient_cases")
+-- FIX 2: Removed the separate 'patient_cases' table that previously existed — entity maps to one table
+-- FIX 3: Dropped old 'patients' DROP in favour of 'patient_cases'
 -- ============================================================
 \connect dsas_patients
 
 DROP TABLE IF EXISTS patient_cases;
-DROP TABLE IF EXISTS patients;
 
-CREATE TABLE patients (
+CREATE TABLE patient_cases (
     id            BIGSERIAL     PRIMARY KEY,
     patient_code  VARCHAR(20)   NOT NULL UNIQUE,
     gender        VARCHAR(10)   NOT NULL CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
@@ -126,19 +133,18 @@ CREATE TABLE patients (
     report_date   TIMESTAMP
 );
 
-CREATE INDEX idx_patients_disease  ON patients(disease);
-CREATE INDEX idx_patients_region   ON patients(region);
-CREATE INDEX idx_patients_date     ON patients(report_date);
-CREATE INDEX idx_patients_reported ON patients(reported_by);
+CREATE INDEX idx_patients_disease  ON patient_cases(disease);
+CREATE INDEX idx_patients_region   ON patient_cases(region);
+CREATE INDEX idx_patients_date     ON patient_cases(report_date);
+CREATE INDEX idx_patients_reported ON patient_cases(reported_by);
 
 
 -- ============================================================
 -- BASE : dsas_analytics  (appartient à analytics-service)
+-- No entity file provided — unchanged
 -- ============================================================
 \connect dsas_analytics
 
--- Copies dénormalisées pour les calculs — alimentées par RabbitMQ
--- analytics-service ne lit PAS dsas_patients directement
 CREATE TABLE case_events (
     id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_code VARCHAR(20)  NOT NULL,
@@ -151,7 +157,6 @@ CREATE TABLE case_events (
     received_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
--- Résultats agrégés par maladie + région + période
 CREATE TABLE case_aggregates (
     id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     disease_name VARCHAR(100) NOT NULL,
@@ -172,12 +177,13 @@ CREATE INDEX idx_agg_lookup     ON case_aggregates(disease_name, region, period_
 
 -- ============================================================
 -- BASE : dsas_alerts  (appartient à alert-service)
+-- No entity file provided — unchanged
 -- ============================================================
 \connect dsas_alerts
 
 CREATE TABLE alerts (
     id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    disease_name VARCHAR(100) NOT NULL,    -- copie dénormalisée, pas de FK
+    disease_name VARCHAR(100) NOT NULL,
     region       VARCHAR(100) NOT NULL,
     alert_level  VARCHAR(20)  NOT NULL
                  CHECK (alert_level IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
@@ -197,6 +203,7 @@ CREATE INDEX idx_alerts_active  ON alerts(is_resolved) WHERE NOT is_resolved;
 
 -- ============================================================
 -- BASE : dsas_reports  (appartient à report-service)
+-- No entity file provided — unchanged
 -- ============================================================
 \connect dsas_reports
 
@@ -204,14 +211,14 @@ CREATE TABLE reports (
     id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     report_type   VARCHAR(30)  NOT NULL
                   CHECK (report_type IN ('DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM')),
-    generated_by  UUID         NOT NULL,   -- UUID user de dsas_auth via API
+    generated_by  UUID         NOT NULL,
     generated_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
-    file_path     VARCHAR(500),            -- chemin du PDF/CSV généré
+    file_path     VARCHAR(500),
     file_format   VARCHAR(10)  NOT NULL DEFAULT 'PDF'
                   CHECK (file_format IN ('PDF', 'CSV')),
     period_start  DATE,
     period_end    DATE,
-    parameters    JSONB                    -- filtres utilisés pour ce rapport
+    parameters    JSONB
 );
 
 CREATE INDEX idx_reports_type ON reports(report_type);

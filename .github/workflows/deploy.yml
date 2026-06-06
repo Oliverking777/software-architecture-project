@@ -282,25 +282,25 @@ jobs:
           script: |
             kubectl apply -f /home/deploy/infrastructure/k8s/api-gateway/
             kubectl apply -f /home/deploy/infrastructure/k8s/auth-service/
-            kubectl apply -f /home/deploy/infrastructure/k8s/disease-service/
-            kubectl apply -f /home/deploy/infrastructure/k8s/location-service/
-            kubectl apply -f /home/deploy/infrastructure/k8s/patient-service/
-            kubectl apply -f /home/deploy/infrastructure/k8s/analytics-service/
-            kubectl apply -f /home/deploy/infrastructure/k8s/geo-service/
-            kubectl apply -f /home/deploy/infrastructure/k8s/notification-service/
-            kubectl apply -f /home/deploy/infrastructure/k8s/report-service/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/disease-service/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/location-service/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/patient-service/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/analytics-service/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/geo-service/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/notification-service/
+            # kubectl apply -f /home/deploy/infrastructure/k8s/report-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/frontend/
 
             kubectl rollout restart deployment/api-gateway
             kubectl rollout restart deployment/auth-service
-            kubectl rollout restart deployment/disease-service
-            kubectl rollout restart deployment/location-service
-            kubectl rollout restart deployment/patient-service
-            kubectl rollout restart deployment/analytics-service
-            kubectl rollout restart deployment/geo-service
-            kubectl rollout restart deployment/notification-service
-            kubectl rollout restart deployment/report-service
-            kubectl rollout restart deployment/frontend
+            # kubectl rollout restart deployment/disease-service
+            # kubectl rollout restart deployment/location-service
+            # kubectl rollout restart deployment/patient-service
+            # kubectl rollout restart deployment/analytics-service
+            # kubectl rollout restart deployment/geo-service
+            # kubectl rollout restart deployment/notification-service
+            # kubectl rollout restart deployment/report-service
+            # kubectl rollout restart deployment/frontend
 
             kubectl rollout status deployment/api-gateway --timeout=300s
             # kubectl rollout status deployment/auth-service --timeout=300s
