@@ -7,10 +7,10 @@ import DiseasesPage from "./pages/DiseasesPage.jsx";
 import LocationsPage from "./pages/LocationsPage.jsx";
 import AnalyticsPage from "./pages/AnalyticsPage.jsx";
 import AlertsPage from "./pages/AlertsPage.jsx";
-import ReportsPage from "./pages/ReportsPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import { analyticsAPI } from "./services/api.js";
+import ReportsPage from "./pages/ReportsPage.jsx";
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
