@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: frontend
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: frontend
+
+  template:
+    metadata:
+      labels:
+        app: frontend
+
+    spec:
+      initContainers:
+        - name: wait-for-api
+          image: busybox
+          command: ['sh', '-c', 'until wget -qO- http://api-gateway:8080/actuator/health; do echo waiting for api-gateway; sleep 5; done']
+
+      containers:
+        - name: frontend
+          image: tinfeh/frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: REACT_APP_API_URL
+              value: "https://dsas-app.tsgpcorporation.com/api"
