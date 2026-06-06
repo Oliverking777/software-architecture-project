@@ -25,7 +25,7 @@ env:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         service:
@@ -91,7 +91,7 @@ jobs:
 
   security-scan:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         service:
@@ -134,7 +134,7 @@ jobs:
           retention-days: 30
 
   build-images:
-    needs: [lint-and-test, security-scan]
+    needs: [ lint-and-test, security-scan ]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
 
@@ -175,7 +175,7 @@ jobs:
           cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:buildcache,mode=max
 
   deploy:
-    needs: [build-images]
+    needs: [ build-images ]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -198,26 +198,23 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Apply all k8s manifests
             kubectl apply -f /home/deploy/infrastructure/k8s/analytics-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/geo-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/notification-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/report-service/
 
-            # Restart to pull latest images from Docker Hub
             kubectl rollout restart deployment/analytics-service
             kubectl rollout restart deployment/geo-service
             kubectl rollout restart deployment/notification-service
             kubectl rollout restart deployment/report-service
 
-            # Wait for rollouts to complete
             kubectl rollout status deployment/analytics-service --timeout=300s
             kubectl rollout status deployment/geo-service --timeout=300s
             kubectl rollout status deployment/notification-service --timeout=300s
             kubectl rollout status deployment/report-service --timeout=300s
 
   notify:
-    needs: [deploy]
+    needs: [ deploy ]
     runs-on: ubuntu-latest
     if: always()
 

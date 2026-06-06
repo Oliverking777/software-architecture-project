@@ -135,7 +135,7 @@ jobs:
 
   # ── Stage 4: Build and Push ALL images ────────────────────────
   build-and-push-images:
-    needs: [build-and-test-java, build-and-test-python, build-and-test-frontend]
+    needs: [ build-and-test-java, build-and-test-python, build-and-test-frontend ]
     runs-on: ubuntu-latest
 
     strategy:
@@ -189,7 +189,7 @@ jobs:
 
   # ── Stage 5: Deploy Infrastructure ────────────────────────────
   deploy-infrastructure:
-    needs: [build-and-push-images]
+    needs: [ build-and-push-images ]
     runs-on: ubuntu-latest
 
     steps:
@@ -228,22 +228,13 @@ jobs:
 
   # ── Stage 6: Deploy Discovery Service ─────────────────────────
   deploy-discovery:
-    needs: [deploy-infrastructure]
+    needs: [ deploy-infrastructure ]
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy discovery manifests to VPS
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "infrastructure/k8s/discovery-service/"
-          target: "/home/deploy/"
-
-      - name: Deploy discovery service
+      - name: Deploy discovery service (skip restart if already healthy)
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -251,13 +242,23 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             kubectl apply -f /home/deploy/infrastructure/k8s/discovery-service/
-            kubectl rollout restart deployment/discovery-service
+
+            READY=$(kubectl get deployment discovery-service \
+              -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+
+            if [ "$READY" = "0" ]; then
+              echo "Discovery service not ready — restarting..."
+              kubectl rollout restart deployment/discovery-service
+            else
+              echo "Discovery service already running ($READY replicas) — skipping restart"
+            fi
+
             kubectl rollout status deployment/discovery-service --timeout=300s
             echo "Discovery service is ready"
 
   # ── Stage 7: Deploy All Other Services ────────────────────────
   deploy-services:
-    needs: [deploy-discovery]
+    needs: [ deploy-discovery ]
     runs-on: ubuntu-latest
 
     steps:
@@ -272,7 +273,7 @@ jobs:
           source: "infrastructure/k8s/"
           target: "/home/deploy/"
 
-      - name: Deploy all backend services
+      - name: Deploy all backend and frontend services
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -316,7 +317,7 @@ jobs:
 
   # ── Stage 8: Deploy Ingress ────────────────────────────────────
   deploy-ingress:
-    needs: [deploy-services]
+    needs: [ deploy-services ]
     runs-on: ubuntu-latest
 
     steps:
@@ -343,7 +344,7 @@ jobs:
 
   # ── Stage 9: Notify ───────────────────────────────────────────
   notify:
-    needs: [deploy-ingress]
+    needs: [ deploy-ingress ]
     runs-on: ubuntu-latest
     if: always()
 

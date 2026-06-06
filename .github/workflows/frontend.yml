@@ -47,7 +47,7 @@ jobs:
           REACT_APP_API_URL: https://dsas-app.tsgpcorporation.com/api
 
   build-image:
-    needs: [build-and-test]
+    needs: [ build-and-test ]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
 
@@ -75,7 +75,7 @@ jobs:
           cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/frontend:buildcache,mode=max
 
   deploy:
-    needs: [build-image]
+    needs: [ build-image ]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -98,22 +98,14 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Apply frontend k8s manifests
             kubectl apply -f /home/deploy/infrastructure/k8s/frontend/
-
-            # Restart to pull latest image
             kubectl rollout restart deployment/frontend
-
-            # Wait for rollout
             kubectl rollout status deployment/frontend --timeout=300s
-
-            # Apply updated ingress
             kubectl apply -f /home/deploy/infrastructure/k8s/ingress/
-
             echo "Frontend deployed successfully"
 
   notify:
-    needs: [deploy]
+    needs: [ deploy ]
     runs-on: ubuntu-latest
     if: always()
 

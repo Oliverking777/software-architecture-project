@@ -48,19 +48,16 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Create configmap from init-db.sql
             kubectl create configmap postgres-init-sql \
               --from-file=init.sql=/home/deploy/infrastructure/init-db.sql \
               --dry-run=client -o yaml | kubectl apply -f -
 
-            # Deploy infrastructure services
             kubectl apply -f /home/deploy/infrastructure/k8s/postgres/
             kubectl apply -f /home/deploy/infrastructure/k8s/rabbitmq/
             kubectl apply -f /home/deploy/infrastructure/k8s/mailhog/
             kubectl apply -f /home/deploy/infrastructure/k8s/prometheus/
             kubectl apply -f /home/deploy/infrastructure/k8s/grafana/
 
-            # Wait for postgres and rabbitmq to be ready first
             kubectl rollout status deployment/postgres --timeout=300s
             kubectl rollout status deployment/rabbitmq --timeout=300s
             kubectl rollout status deployment/mailhog --timeout=300s

@@ -201,7 +201,7 @@ jobs:
             -Dsonar.java.test.binaries=backend/${{ matrix.service }}/target/test-classes
 
   deploy:
-    needs: [build-images]
+    needs: [ build-images ]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -224,7 +224,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Apply all k8s manifests
+            # Apply manifests for all services (including discovery to keep config up to date)
             kubectl apply -f /home/deploy/infrastructure/k8s/discovery-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/api-gateway/
             kubectl apply -f /home/deploy/infrastructure/k8s/auth-service/
@@ -232,8 +232,18 @@ jobs:
             kubectl apply -f /home/deploy/infrastructure/k8s/location-service/
             kubectl apply -f /home/deploy/infrastructure/k8s/patient-service/
 
-            # Restart to pull latest images from Docker Hub
-            kubectl rollout restart deployment/discovery-service
+            # Skip restarting discovery-service if already running healthy
+            READY=$(kubectl get deployment discovery-service \
+              -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+            if [ "$READY" = "0" ]; then
+              echo "Discovery service not ready — restarting..."
+              kubectl rollout restart deployment/discovery-service
+              kubectl rollout status deployment/discovery-service --timeout=300s
+            else
+              echo "Discovery service already running ($READY replicas) — skipping restart"
+            fi
+
+            # Restart all other Java services
             kubectl rollout restart deployment/api-gateway
             kubectl rollout restart deployment/auth-service
             kubectl rollout restart deployment/disease-service
@@ -241,7 +251,6 @@ jobs:
             kubectl rollout restart deployment/patient-service
 
             # Wait for rollouts to complete
-            kubectl rollout status deployment/discovery-service --timeout=300s
             kubectl rollout status deployment/api-gateway --timeout=300s
             kubectl rollout status deployment/auth-service --timeout=300s
             kubectl rollout status deployment/disease-service --timeout=300s
