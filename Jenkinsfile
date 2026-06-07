@@ -373,6 +373,7 @@ def lintAndTestPython(String service) {
         cd backend/${service}
         python3 -m pip install --upgrade pip -q --break-system-packages
         pip install -r requirements.txt -q --break-system-packages
+        pip install coverage -q --break-system-packages
         pip install pytest pytest-cov flake8 black isort -q --break-system-packages
 
         # Critical errors — pipeline fails on these
@@ -387,7 +388,6 @@ def lintAndTestPython(String service) {
         pytest --cov=app --cov-report=xml --cov-report=html --tb=short || true
     """
 }
-
 // ── Build and push Docker image ────────────────────────────────
 def buildAndPushImage(String service, String context) {
     sh """
