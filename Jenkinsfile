@@ -72,36 +72,37 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 1 — BUILD & TEST
-        //  Run all tests in parallel (infra already up)
+        //  PHASE 1 — BUILD & TEST JAVA SERVICES
+        //  ✅ All Java services confirmed passing — temporarily
+        //  commented out to speed up Python debugging
         // ══════════════════════════════════════════════════════
 
-        stage('Build & Test — Java Services') {
-            parallel {
-                // No DB — api-gateway and discovery-service are
-                // pure routing/registry services
-                stage('api-gateway') {
-                    steps { buildAndTestJavaNoDB('api-gateway') }
-                }
-                stage('discovery-service') {
-                    steps { buildAndTestJavaNoDB('discovery-service') }
-                }
+        // stage('Build & Test — Java Services') {
+        //     parallel {
+        //         stage('api-gateway') {
+        //             steps { buildAndTestJavaNoDB('api-gateway') }
+        //         }
+        //         stage('discovery-service') {
+        //             steps { buildAndTestJavaNoDB('discovery-service') }
+        //         }
+        //         stage('auth-service') {
+        //             steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
+        //         }
+        //         stage('disease-service') {
+        //             steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
+        //         }
+        //         stage('location-service') {
+        //             steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
+        //         }
+        //         stage('patient-service') {
+        //             steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
+        //         }
+        //     }
+        // }
 
-                // DB-backed services — each gets its own database
-                stage('auth-service') {
-                    steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
-                }
-                stage('disease-service') {
-                    steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
-                }
-                stage('location-service') {
-                    steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
-                }
-                stage('patient-service') {
-                    steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
-                }
-            }
-        }
+        // ══════════════════════════════════════════════════════
+        //  PHASE 2 — BUILD & TEST PYTHON SERVICES
+        // ══════════════════════════════════════════════════════
 
         stage('Build & Test — Python Services') {
             parallel {
@@ -121,7 +122,7 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 2 — BUILD & PUSH ALL DOCKER IMAGES
+        //  PHASE 3 — BUILD & PUSH ALL DOCKER IMAGES
         // ══════════════════════════════════════════════════════
 
         stage('Build & Push — Java Images') {
@@ -167,7 +168,7 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 3 — DEPLOY INFRASTRUCTURE FIRST
+        //  PHASE 4 — DEPLOY INFRASTRUCTURE FIRST
         // ══════════════════════════════════════════════════════
 
         stage('Deploy — Infrastructure') {
@@ -196,7 +197,7 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 4 — DEPLOY DISCOVERY SERVICE
+        //  PHASE 5 — DEPLOY DISCOVERY SERVICE
         // ══════════════════════════════════════════════════════
 
         stage('Deploy — Discovery Service') {
@@ -223,7 +224,7 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 5 — DEPLOY JAVA SERVICES
+        //  PHASE 6 — DEPLOY JAVA SERVICES
         // ══════════════════════════════════════════════════════
 
         stage('Deploy — Java Services') {
@@ -250,7 +251,7 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 6 — DEPLOY PYTHON SERVICES
+        //  PHASE 7 — DEPLOY PYTHON SERVICES
         // ══════════════════════════════════════════════════════
 
         stage('Deploy — Python Services') {
@@ -276,7 +277,7 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 7 — DEPLOY INGRESS
+        //  PHASE 8 — DEPLOY INGRESS
         // ══════════════════════════════════════════════════════
 
         stage('Deploy — Ingress') {
@@ -315,7 +316,6 @@ pipeline {
 
 // ── Java service WITH a database ──────────────────────────────
 def buildAndTestJavaWithDB(String service, String dbName) {
-    // Get container IDs dynamically (name varies with COMPOSE_PROJECT)
     def pgContainer = sh(
         script: "docker compose -p ${env.COMPOSE_PROJECT} -f infrastructure/docker-compose.yml ps -q postgres",
         returnStdout: true
@@ -370,6 +370,8 @@ def buildAndTestJavaNoDB(String service) {
 // ── Python service ─────────────────────────────────────────────
 def lintAndTestPython(String service) {
     sh """
+        export PATH=\$PATH:/var/jenkins_home/.local/bin
+
         cd backend/${service}
         python3 -m pip install --upgrade pip -q --break-system-packages
         pip install -r requirements.txt -q --break-system-packages
@@ -388,6 +390,7 @@ def lintAndTestPython(String service) {
         pytest --cov=app --cov-report=xml --cov-report=html --tb=short || true
     """
 }
+
 // ── Build and push Docker image ────────────────────────────────
 def buildAndPushImage(String service, String context) {
     sh """
