@@ -8,10 +8,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB = credentials('dockerhub-creds')
-        KUBECONFIG  = '/var/jenkins_home/.kube/config'
-        COMPOSE_FILE = 'docker-compose.yml'
-        // Unique project name per build so parallel builds don't clash
+        DOCKER_HUB    = credentials('dockerhub-creds')
+        KUBECONFIG    = '/var/jenkins_home/.kube/config'
+        COMPOSE_FILE  = 'docker-compose.yml'
         COMPOSE_PROJECT = "dsas-test-${BUILD_NUMBER}"
     }
 
@@ -30,16 +29,18 @@ pipeline {
 
         // ══════════════════════════════════════════════════════
         //  PHASE 0 — START TEST INFRASTRUCTURE
-        //  Spin up Postgres, RabbitMQ, Mailhog once for all tests
+        //  Spin up Postgres + RabbitMQ + Mailhog once for all tests
         // ══════════════════════════════════════════════════════
 
         stage('Start Test Infrastructure') {
             steps {
                 sh '''
                     cd infrastructure
+
                     docker compose -p ${COMPOSE_PROJECT} \
                         up -d postgres rabbitmq mailhog
 
+                    # ── Wait for Postgres ──────────────────────
                     echo ">>> Waiting for Postgres..."
                     for i in $(seq 1 30); do
                         docker compose -p ${COMPOSE_PROJECT} \
@@ -48,11 +49,15 @@ pipeline {
                         sleep 3
                     done
 
+                    # ── Copy and run init-db.sql ───────────────
                     echo ">>> Running init-db.sql..."
+                    PG_CONTAINER=$(docker compose -p ${COMPOSE_PROJECT} ps -q postgres)
+                    docker cp init-db.sql ${PG_CONTAINER}:/tmp/init-db.sql
                     docker compose -p ${COMPOSE_PROJECT} \
                         exec -T postgres psql -U dsas_user -d dsas_db \
-                        -f /dev/stdin < init-db.sql
+                        -f /tmp/init-db.sql
 
+                    # ── Wait for RabbitMQ ──────────────────────
                     echo ">>> Waiting for RabbitMQ..."
                     for i in $(seq 1 30); do
                         docker compose -p ${COMPOSE_PROJECT} \
@@ -73,21 +78,45 @@ pipeline {
 
         stage('Build & Test — Java Services') {
             parallel {
-                stage('api-gateway')      { steps { buildAndTestJava('api-gateway') } }
-                stage('auth-service')     { steps { buildAndTestJava('auth-service') } }
-                stage('discovery-service'){ steps { buildAndTestJava('discovery-service') } }
-                stage('disease-service')  { steps { buildAndTestJava('disease-service') } }
-                stage('location-service') { steps { buildAndTestJava('location-service') } }
-                stage('patient-service')  { steps { buildAndTestJava('patient-service') } }
+                // No DB — api-gateway and discovery-service are
+                // pure routing/registry services
+                stage('api-gateway') {
+                    steps { buildAndTestJavaNoDB('api-gateway') }
+                }
+                stage('discovery-service') {
+                    steps { buildAndTestJavaNoDB('discovery-service') }
+                }
+
+                // DB-backed services — each gets its own database
+                stage('auth-service') {
+                    steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
+                }
+                stage('disease-service') {
+                    steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
+                }
+                stage('location-service') {
+                    steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
+                }
+                stage('patient-service') {
+                    steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
+                }
             }
         }
 
         stage('Build & Test — Python Services') {
             parallel {
-                stage('analytics-service')   { steps { lintAndTestPython('analytics-service') } }
-                stage('geo-service')         { steps { lintAndTestPython('geo-service') } }
-                stage('notification-service'){ steps { lintAndTestPython('notification-service') } }
-                stage('report-service')      { steps { lintAndTestPython('report-service') } }
+                stage('analytics-service') {
+                    steps { lintAndTestPython('analytics-service') }
+                }
+                stage('geo-service') {
+                    steps { lintAndTestPython('geo-service') }
+                }
+                stage('notification-service') {
+                    steps { lintAndTestPython('notification-service') }
+                }
+                stage('report-service') {
+                    steps { lintAndTestPython('report-service') }
+                }
             }
         }
 
@@ -98,22 +127,42 @@ pipeline {
         stage('Build & Push — Java Images') {
             when { branch 'main' }
             parallel {
-                stage('img: api-gateway')      { steps { buildAndPushImage('api-gateway',      'backend/api-gateway') } }
-                stage('img: auth-service')     { steps { buildAndPushImage('auth-service',     'backend/auth-service') } }
-                stage('img: discovery-service'){ steps { buildAndPushImage('discovery-service','backend/discovery-service') } }
-                stage('img: disease-service')  { steps { buildAndPushImage('disease-service',  'backend/disease-service') } }
-                stage('img: location-service') { steps { buildAndPushImage('location-service', 'backend/location-service') } }
-                stage('img: patient-service')  { steps { buildAndPushImage('patient-service',  'backend/patient-service') } }
+                stage('img: api-gateway') {
+                    steps { buildAndPushImage('api-gateway', 'backend/api-gateway') }
+                }
+                stage('img: auth-service') {
+                    steps { buildAndPushImage('auth-service', 'backend/auth-service') }
+                }
+                stage('img: discovery-service') {
+                    steps { buildAndPushImage('discovery-service', 'backend/discovery-service') }
+                }
+                stage('img: disease-service') {
+                    steps { buildAndPushImage('disease-service', 'backend/disease-service') }
+                }
+                stage('img: location-service') {
+                    steps { buildAndPushImage('location-service', 'backend/location-service') }
+                }
+                stage('img: patient-service') {
+                    steps { buildAndPushImage('patient-service', 'backend/patient-service') }
+                }
             }
         }
 
         stage('Build & Push — Python Images') {
             when { branch 'main' }
             parallel {
-                stage('img: analytics-service')   { steps { buildAndPushImage('analytics-service',   'backend/analytics-service') } }
-                stage('img: geo-service')         { steps { buildAndPushImage('geo-service',         'backend/geo-service') } }
-                stage('img: notification-service'){ steps { buildAndPushImage('notification-service','backend/notification-service') } }
-                stage('img: report-service')      { steps { buildAndPushImage('report-service',      'backend/report-service') } }
+                stage('img: analytics-service') {
+                    steps { buildAndPushImage('analytics-service', 'backend/analytics-service') }
+                }
+                stage('img: geo-service') {
+                    steps { buildAndPushImage('geo-service', 'backend/geo-service') }
+                }
+                stage('img: notification-service') {
+                    steps { buildAndPushImage('notification-service', 'backend/notification-service') }
+                }
+                stage('img: report-service') {
+                    steps { buildAndPushImage('report-service', 'backend/report-service') }
+                }
             }
         }
 
@@ -245,12 +294,12 @@ pipeline {
     // ── Post Actions ───────────────────────────────────────────
     post {
         always {
-        sh '''
-            cd infrastructure
-            docker compose -p ${COMPOSE_PROJECT} down -v || true
-            echo ">>> Cleanup done"
-        '''
-    }
+            sh '''
+                cd infrastructure
+                docker compose -p ${COMPOSE_PROJECT} down -v || true
+                echo ">>> Cleanup done"
+            '''
+        }
         success {
             echo "✅ PIPELINE COMPLETED SUCCESSFULLY — Build #${BUILD_NUMBER}"
         }
@@ -264,14 +313,26 @@ pipeline {
 //  SHARED FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
 
-def buildAndTestJava(String service) {
+// ── Java service WITH a database ──────────────────────────────
+def buildAndTestJavaWithDB(String service, String dbName) {
+    // Get container IDs dynamically (name varies with COMPOSE_PROJECT)
+    def pgContainer = sh(
+        script: "docker compose -p ${env.COMPOSE_PROJECT} -f infrastructure/docker-compose.yml ps -q postgres",
+        returnStdout: true
+    ).trim()
+
     def pgHost = sh(
-        script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' dsas-postgres",
+        script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${pgContainer}",
+        returnStdout: true
+    ).trim()
+
+    def mqContainer = sh(
+        script: "docker compose -p ${env.COMPOSE_PROJECT} -f infrastructure/docker-compose.yml ps -q rabbitmq",
         returnStdout: true
     ).trim()
 
     def mqHost = sh(
-        script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' dsas-rabbitmq",
+        script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${mqContainer}",
         returnStdout: true
     ).trim()
 
@@ -281,7 +342,7 @@ def buildAndTestJava(String service) {
             mvn clean package -B -q
             mvn test -B \
                 -Dspring.profiles.active=test \
-                -DSPRING_DATASOURCE_URL=jdbc:postgresql://${pgHost}:5432/dsas_db \
+                -DSPRING_DATASOURCE_URL=jdbc:postgresql://${pgHost}:5432/${dbName} \
                 -DSPRING_DATASOURCE_USERNAME=dsas_user \
                 -DSPRING_DATASOURCE_PASSWORD=dsas_password \
                 -DSPRING_RABBITMQ_HOST=${mqHost} \
@@ -292,8 +353,22 @@ def buildAndTestJava(String service) {
     }
 }
 
+// ── Java service WITHOUT a database (gateway / discovery) ─────
+def buildAndTestJavaNoDB(String service) {
+    withEnv(["PATH+MAVEN=${tool 'Maven-3'}/bin"]) {
+        sh """
+            cd backend/${service}
+            mvn clean package -B -q
+            mvn test -B \
+                -Dspring.profiles.active=test \
+                -Deureka.client.enabled=false \
+                -Dspring.cloud.discovery.enabled=false
+        """
+    }
+}
+
+// ── Python service ─────────────────────────────────────────────
 def lintAndTestPython(String service) {
-    // Infra is already up — just lint and test
     sh """
         cd backend/${service}
         python3 -m pip install --upgrade pip -q
@@ -313,6 +388,7 @@ def lintAndTestPython(String service) {
     """
 }
 
+// ── Build and push Docker image ────────────────────────────────
 def buildAndPushImage(String service, String context) {
     sh """
         docker build \

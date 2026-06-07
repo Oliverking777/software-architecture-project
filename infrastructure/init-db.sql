@@ -84,7 +84,7 @@ CREATE INDEX idx_agg_lookup     ON case_aggregates(disease_name, region, period_
 
 CREATE TABLE alerts (
     id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    disease_name VARCHAR(100) NOT NULL,    -- denormalized copy, no FK
+    disease_name VARCHAR(100) NOT NULL,
     region       VARCHAR(100) NOT NULL,
     alert_level  VARCHAR(20)  NOT NULL
                  CHECK (alert_level IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
@@ -111,14 +111,14 @@ CREATE TABLE reports (
     id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     report_type   VARCHAR(30)  NOT NULL
                   CHECK (report_type IN ('DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM')),
-    generated_by  UUID         NOT NULL,   
+    generated_by  UUID         NOT NULL,
     generated_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
-    file_path     VARCHAR(500),            
+    file_path     VARCHAR(500),
     file_format   VARCHAR(10)  NOT NULL DEFAULT 'PDF'
                   CHECK (file_format IN ('PDF', 'CSV')),
     period_start  DATE,
     period_end    DATE,
-    parameters    JSONB                    
+    parameters    JSONB
 );
 
 CREATE INDEX idx_reports_type ON reports(report_type);
