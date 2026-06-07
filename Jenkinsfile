@@ -10,7 +10,7 @@ pipeline {
     environment {
         DOCKER_HUB = credentials('dockerhub-creds')
         KUBECONFIG  = '/var/jenkins_home/.kube/config'
-        COMPOSE_FILE = 'docker-compose.test.yml'
+        COMPOSE_FILE = 'infrastructure/docker-compose.yml'
         // Unique project name per build so parallel builds don't clash
         COMPOSE_PROJECT = "dsas-test-${BUILD_NUMBER}"
     }
@@ -37,11 +37,12 @@ pipeline {
             steps {
                 sh '''
                     echo ">>> Starting test infrastructure (project: ${COMPOSE_PROJECT})..."
-                    docker-compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} up -d
+                    docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
+                        up -d postgres rabbitmq mailhog
 
                     echo ">>> Waiting for Postgres to accept connections..."
                     for i in $(seq 1 30); do
-                        docker-compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
+                        docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
                             exec -T postgres pg_isready -U dsas_user && break
                         echo "  Postgres not ready yet ($i/30)..."
                         sleep 3
@@ -49,7 +50,7 @@ pipeline {
 
                     echo ">>> Waiting for RabbitMQ to be ready..."
                     for i in $(seq 1 30); do
-                        docker-compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
+                        docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
                             exec -T rabbitmq rabbitmq-diagnostics ping && break
                         echo "  RabbitMQ not ready yet ($i/30)..."
                         sleep 3
@@ -242,7 +243,7 @@ pipeline {
             // Always tear down test infra, even if build fails
             sh '''
                 echo ">>> Tearing down test infrastructure..."
-                docker-compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} down -v || true
+                docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} down -v || true
                 echo ">>> Cleanup done"
             '''
         }
@@ -295,9 +296,7 @@ def lintAndTestPython(String service) {
         isort --check-only app || true
 
         # Tests with coverage
-        pytest --cov=app --cov-report=xml --cov-report=html \
-            -DSPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/dsas_db \
-            --tb=short || true
+        pytest --cov=app --cov-report=xml --cov-report=html --tb=short || true
     """
 }
 
