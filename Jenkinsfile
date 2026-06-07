@@ -48,6 +48,11 @@ pipeline {
                         sleep 3
                     done
 
+                    echo ">>> Running init-db.sql..."
+                    docker compose -p ${COMPOSE_PROJECT} \
+                        exec -T postgres psql -U dsas_user -d dsas_db \
+                        -f /dev/stdin < init-db.sql
+
                     echo ">>> Waiting for RabbitMQ..."
                     for i in $(seq 1 30); do
                         docker compose -p ${COMPOSE_PROJECT} \
