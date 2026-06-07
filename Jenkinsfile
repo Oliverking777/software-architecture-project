@@ -371,9 +371,9 @@ def buildAndTestJavaNoDB(String service) {
 def lintAndTestPython(String service) {
     sh """
         cd backend/${service}
-        python3 -m pip install --upgrade pip -q
-        pip install -r requirements.txt -q
-        pip install pytest pytest-cov flake8 black isort -q
+        python3 -m pip install --upgrade pip -q --break-system-packages
+        pip install -r requirements.txt -q --break-system-packages
+        pip install pytest pytest-cov flake8 black isort -q --break-system-packages
 
         # Critical errors — pipeline fails on these
         flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
