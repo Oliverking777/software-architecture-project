@@ -265,17 +265,26 @@ pipeline {
 // ═══════════════════════════════════════════════════════════════
 
 def buildAndTestJava(String service) {
-    // Infra is already up — just build and test
+    def pgHost = sh(
+        script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' dsas-postgres",
+        returnStdout: true
+    ).trim()
+
+    def mqHost = sh(
+        script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' dsas-rabbitmq",
+        returnStdout: true
+    ).trim()
+
     withEnv(["PATH+MAVEN=${tool 'Maven-3'}/bin"]) {
         sh """
             cd backend/${service}
             mvn clean package -B -q
             mvn test -B \
                 -Dspring.profiles.active=test \
-                -DSPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/dsas_db \
+                -DSPRING_DATASOURCE_URL=jdbc:postgresql://${pgHost}:5432/dsas_db \
                 -DSPRING_DATASOURCE_USERNAME=dsas_user \
                 -DSPRING_DATASOURCE_PASSWORD=dsas_password \
-                -DSPRING_RABBITMQ_HOST=localhost \
+                -DSPRING_RABBITMQ_HOST=${mqHost} \
                 -DSPRING_RABBITMQ_PORT=5672 \
                 -DSPRING_RABBITMQ_USERNAME=dsas_user \
                 -DSPRING_RABBITMQ_PASSWORD=dsas_password
