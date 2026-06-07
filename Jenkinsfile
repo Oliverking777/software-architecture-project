@@ -249,26 +249,10 @@ pipeline {
     // ── Post Actions ───────────────────────────────────────────
     post {
         success {
-            echo """
-            ╔══════════════════════════════════════╗
-            ║  ✅  PIPELINE COMPLETED SUCCESSFULLY  ║
-            ║  Build #${BUILD_NUMBER}
-            ╚══════════════════════════════════════╝
-            """
+            echo "✅ PIPELINE COMPLETED SUCCESSFULLY — Build #${BUILD_NUMBER}"
         }
         failure {
-            echo """
-            ╔══════════════════════════════════════╗
-            ║  ❌  PIPELINE FAILED                  ║
-            ║  Build #${BUILD_NUMBER}
-            ╚══════════════════════════════════════╝
-            """
-        }
-        always {
-            junit allowEmptyResults: true,
-                  testResults: '**/target/surefire-reports/*.xml'
-            archiveArtifacts allowEmptyArchive: true,
-                             artifacts: '**/htmlcov/**'
+            echo "❌ PIPELINE FAILED — Build #${BUILD_NUMBER}"
         }
     }
 }
@@ -278,18 +262,20 @@ pipeline {
 // ═══════════════════════════════════════════════════════════════
 
 def buildAndTestJava(String service) {
-    sh """
-        cd backend/${service}
-        mvn clean package -B
-        mvn test -B -Dspring.profiles.active=test \
-            -DSPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/dsas_db \
-            -DSPRING_DATASOURCE_USERNAME=dsas_user \
-            -DSPRING_DATASOURCE_PASSWORD=dsas_password \
-            -DSPRING_RABBITMQ_HOST=localhost \
-            -DSPRING_RABBITMQ_PORT=5672 \
-            -DSPRING_RABBITMQ_USERNAME=dsas_user \
-            -DSPRING_RABBITMQ_PASSWORD=dsas_password
-    """
+    withEnv(["PATH+MAVEN=${tool 'Maven-3'}/bin"]) {
+        sh """
+            cd backend/${service}
+            mvn clean package -B
+            mvn test -B -Dspring.profiles.active=test \
+                -DSPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/dsas_db \
+                -DSPRING_DATASOURCE_USERNAME=dsas_user \
+                -DSPRING_DATASOURCE_PASSWORD=dsas_password \
+                -DSPRING_RABBITMQ_HOST=localhost \
+                -DSPRING_RABBITMQ_PORT=5672 \
+                -DSPRING_RABBITMQ_USERNAME=dsas_user \
+                -DSPRING_RABBITMQ_PASSWORD=dsas_password
+        """
+    }
 }
 
 def lintAndTestPython(String service) {
