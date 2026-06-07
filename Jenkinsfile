@@ -9,7 +9,7 @@ pipeline {
 
     environment {
         DOCKER_HUB = credentials('dockerhub-creds')
-        KUBECONFIG = '/root/.kube/config'
+        KUBECONFIG = '/var/jenkins_home/.kube/config'
     }
 
     triggers {
