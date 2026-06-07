@@ -6,8 +6,6 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: >-
-      default-strip-eureka-prefix@kubernetescrd
 spec:
   tls:
     - hosts:
@@ -17,13 +15,6 @@ spec:
     - host: dsas-app.tsgpcorporation.com
       http:
         paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
           - path: /api
             pathType: Prefix
             backend:

@@ -17,11 +17,6 @@ spec:
         app: notification-service
 
     spec:
-      initContainers:
-        - name: wait-for-eureka
-          image: busybox
-          command: ['sh', '-c', 'until wget -qO- http://eureka-server:8761/actuator/health; do echo waiting for eureka; sleep 5; done']
-
       containers:
         - name: notification-service
           image: tinfeh/notification-service:latest
