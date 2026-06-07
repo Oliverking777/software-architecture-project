@@ -10,7 +10,7 @@ pipeline {
     environment {
         DOCKER_HUB = credentials('dockerhub-creds')
         KUBECONFIG  = '/var/jenkins_home/.kube/config'
-        COMPOSE_FILE = 'infrastructure/docker-compose.yml'
+        COMPOSE_FILE = 'docker-compose.yml'
         // Unique project name per build so parallel builds don't clash
         COMPOSE_PROJECT = "dsas-test-${BUILD_NUMBER}"
     }
@@ -36,21 +36,21 @@ pipeline {
         stage('Start Test Infrastructure') {
             steps {
                 sh '''
-                    echo ">>> Starting test infrastructure (project: ${COMPOSE_PROJECT})..."
-                    docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
+                    cd infrastructure
+                    docker compose -p ${COMPOSE_PROJECT} \
                         up -d postgres rabbitmq mailhog
 
-                    echo ">>> Waiting for Postgres to accept connections..."
+                    echo ">>> Waiting for Postgres..."
                     for i in $(seq 1 30); do
-                        docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
+                        docker compose -p ${COMPOSE_PROJECT} \
                             exec -T postgres pg_isready -U dsas_user && break
                         echo "  Postgres not ready yet ($i/30)..."
                         sleep 3
                     done
 
-                    echo ">>> Waiting for RabbitMQ to be ready..."
+                    echo ">>> Waiting for RabbitMQ..."
                     for i in $(seq 1 30); do
-                        docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
+                        docker compose -p ${COMPOSE_PROJECT} \
                             exec -T rabbitmq rabbitmq-diagnostics ping && break
                         echo "  RabbitMQ not ready yet ($i/30)..."
                         sleep 3
@@ -240,13 +240,12 @@ pipeline {
     // ── Post Actions ───────────────────────────────────────────
     post {
         always {
-            // Always tear down test infra, even if build fails
-            sh '''
-                echo ">>> Tearing down test infrastructure..."
-                docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} down -v || true
-                echo ">>> Cleanup done"
-            '''
-        }
+        sh '''
+            cd infrastructure
+            docker compose -p ${COMPOSE_PROJECT} down -v || true
+            echo ">>> Cleanup done"
+        '''
+    }
         success {
             echo "✅ PIPELINE COMPLETED SUCCESSFULLY — Build #${BUILD_NUMBER}"
         }
