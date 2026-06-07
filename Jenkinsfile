@@ -339,7 +339,7 @@ def buildAndTestJavaWithDB(String service, String dbName) {
     withEnv(["PATH+MAVEN=${tool 'Maven-3'}/bin"]) {
         sh """
             cd backend/${service}
-            mvn clean package -B -q
+            mvn clean package -B -q -DskipTests
             mvn test -B \
                 -Dspring.profiles.active=test \
                 -DSPRING_DATASOURCE_URL=jdbc:postgresql://${pgHost}:5432/${dbName} \
@@ -358,7 +358,7 @@ def buildAndTestJavaNoDB(String service) {
     withEnv(["PATH+MAVEN=${tool 'Maven-3'}/bin"]) {
         sh """
             cd backend/${service}
-            mvn clean package -B -q
+            mvn clean package -B -q -DskipTests
             mvn test -B \
                 -Dspring.profiles.active=test \
                 -Deureka.client.enabled=false \
