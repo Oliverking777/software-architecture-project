@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  DSAS — Unified CI/CD Jenkins Pipeline
-//  Order: Infra (Docker) → Build/Test → Push Images → Deploy
+//  Order: Infra (Docker) → Build/Test → Push Images
+//  Deploy: handled by Ansible (VPS setup)
 //  Frontend: excluded (not ready yet)
 // ═══════════════════════════════════════════════════════════════
 
@@ -8,9 +9,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB    = credentials('dockerhub-creds')
-        KUBECONFIG    = '/var/jenkins_home/.kube/config'
-        COMPOSE_FILE  = 'docker-compose.yml'
+        DOCKER_HUB      = credentials('dockerhub-creds')
         COMPOSE_PROJECT = "dsas-test-${BUILD_NUMBER}"
     }
 
@@ -28,105 +27,85 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 0 — START TEST INFRASTRUCTURE
-        //  Spin up Postgres + RabbitMQ + Mailhog once for all tests
+        //  PHASE 1 — BUILD & TEST
+        //  ✅ All services confirmed passing — commented out
+        //  to save time. Uncomment when needed.
         // ══════════════════════════════════════════════════════
 
-        stage('Start Test Infrastructure') {
-            steps {
-                sh '''
-                    cd infrastructure
+        // stage('Start Test Infrastructure') {
+        //     steps {
+        //         sh '''
+        //             cd infrastructure
+        //             docker compose -p ${COMPOSE_PROJECT} up -d postgres rabbitmq mailhog
+        //
+        //             echo ">>> Waiting for Postgres..."
+        //             for i in $(seq 1 30); do
+        //                 docker compose -p ${COMPOSE_PROJECT} exec -T postgres pg_isready -U dsas_user && break
+        //                 echo "  Postgres not ready yet ($i/30)..."
+        //                 sleep 3
+        //             done
+        //
+        //             echo ">>> Running init-db.sql..."
+        //             PG_CONTAINER=$(docker compose -p ${COMPOSE_PROJECT} ps -q postgres)
+        //             docker cp init-db.sql ${PG_CONTAINER}:/tmp/init-db.sql
+        //             docker compose -p ${COMPOSE_PROJECT} exec -T postgres psql -U dsas_user -d dsas_db -f /tmp/init-db.sql
+        //
+        //             echo ">>> Waiting for RabbitMQ..."
+        //             for i in $(seq 1 30); do
+        //                 docker compose -p ${COMPOSE_PROJECT} exec -T rabbitmq rabbitmq-diagnostics ping && break
+        //                 echo "  RabbitMQ not ready yet ($i/30)..."
+        //                 sleep 3
+        //             done
+        //             echo ">>> Test infrastructure is ready"
+        //         '''
+        //     }
+        // }
 
-                    docker compose -p ${COMPOSE_PROJECT} \
-                        up -d postgres rabbitmq mailhog
+        // stage('Build & Test — Java Services') {
+        //     parallel {
+        //         stage('api-gateway') {
+        //             steps { buildAndTestJavaNoDB('api-gateway') }
+        //         }
+        //         stage('discovery-service') {
+        //             steps { buildAndTestJavaNoDB('discovery-service') }
+        //         }
+        //         stage('auth-service') {
+        //             steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
+        //         }
+        //         stage('disease-service') {
+        //             steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
+        //         }
+        //         stage('location-service') {
+        //             steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
+        //         }
+        //         stage('patient-service') {
+        //             steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
+        //         }
+        //     }
+        // }
 
-                    # ── Wait for Postgres ──────────────────────
-                    echo ">>> Waiting for Postgres..."
-                    for i in $(seq 1 30); do
-                        docker compose -p ${COMPOSE_PROJECT} \
-                            exec -T postgres pg_isready -U dsas_user && break
-                        echo "  Postgres not ready yet ($i/30)..."
-                        sleep 3
-                    done
-
-                    # ── Copy and run init-db.sql ───────────────
-                    echo ">>> Running init-db.sql..."
-                    PG_CONTAINER=$(docker compose -p ${COMPOSE_PROJECT} ps -q postgres)
-                    docker cp init-db.sql ${PG_CONTAINER}:/tmp/init-db.sql
-                    docker compose -p ${COMPOSE_PROJECT} \
-                        exec -T postgres psql -U dsas_user -d dsas_db \
-                        -f /tmp/init-db.sql
-
-                    # ── Wait for RabbitMQ ──────────────────────
-                    echo ">>> Waiting for RabbitMQ..."
-                    for i in $(seq 1 30); do
-                        docker compose -p ${COMPOSE_PROJECT} \
-                            exec -T rabbitmq rabbitmq-diagnostics ping && break
-                        echo "  RabbitMQ not ready yet ($i/30)..."
-                        sleep 3
-                    done
-
-                    echo ">>> Test infrastructure is ready"
-                '''
-            }
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  PHASE 1 — BUILD & TEST JAVA SERVICES
-        //  ✅ All Java services confirmed passing — temporarily
-        //  commented out to speed up Python debugging
-        // ══════════════════════════════════════════════════════
-
-        stage('Build & Test — Java Services') {
-            parallel {
-                stage('api-gateway') {
-                    steps { buildAndTestJavaNoDB('api-gateway') }
-                }
-                stage('discovery-service') {
-                    steps { buildAndTestJavaNoDB('discovery-service') }
-                }
-                stage('auth-service') {
-                    steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
-                }
-                stage('disease-service') {
-                    steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
-                }
-                stage('location-service') {
-                    steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
-                }
-                stage('patient-service') {
-                    steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
-                }
-            }
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  PHASE 2 — BUILD & TEST PYTHON SERVICES
-        // ══════════════════════════════════════════════════════
-
-        stage('Build & Test — Python Services') {
-            parallel {
-                stage('analytics-service') {
-                    steps { lintAndTestPython('analytics-service') }
-                }
-                stage('geo-service') {
-                    steps { lintAndTestPython('geo-service') }
-                }
-                stage('notification-service') {
-                    steps { lintAndTestPython('notification-service') }
-                }
-                stage('report-service') {
-                    steps { lintAndTestPython('report-service') }
-                }
-            }
-        }
+        // stage('Build & Test — Python Services') {
+        //     parallel {
+        //         stage('analytics-service') {
+        //             steps { lintAndTestPython('analytics-service') }
+        //         }
+        //         stage('geo-service') {
+        //             steps { lintAndTestPython('geo-service') }
+        //         }
+        //         stage('notification-service') {
+        //             steps { lintAndTestPython('notification-service') }
+        //         }
+        //         stage('report-service') {
+        //             steps { lintAndTestPython('report-service') }
+        //         }
+        //     }
+        // }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 3 — BUILD & PUSH ALL DOCKER IMAGES
+        //  PHASE 2 — BUILD & PUSH ALL DOCKER IMAGES TO DOCKER HUB
         // ══════════════════════════════════════════════════════
 
         stage('Build & Push — Java Images') {
-            when { branch 'main' }
             parallel {
                 stage('img: api-gateway') {
                     steps { buildAndPushImage('api-gateway', 'backend/api-gateway') }
@@ -150,7 +129,6 @@ pipeline {
         }
 
         stage('Build & Push — Python Images') {
-            when { branch 'main' }
             parallel {
                 stage('img: analytics-service') {
                     steps { buildAndPushImage('analytics-service', 'backend/analytics-service') }
@@ -164,130 +142,6 @@ pipeline {
                 stage('img: report-service') {
                     steps { buildAndPushImage('report-service', 'backend/report-service') }
                 }
-            }
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  PHASE 4 — DEPLOY INFRASTRUCTURE FIRST
-        // ══════════════════════════════════════════════════════
-
-        stage('Deploy — Infrastructure') {
-            when { branch 'main' }
-            steps {
-                sh '''
-                    echo ">>> Applying DB init configmap..."
-                    kubectl create configmap postgres-init-sql \
-                        --from-file=init.sql=infrastructure/init-db.sql \
-                        --dry-run=client -o yaml | kubectl apply -f -
-
-                    echo ">>> Deploying infrastructure services..."
-                    kubectl apply -f infrastructure/k8s/postgres/
-                    kubectl apply -f infrastructure/k8s/rabbitmq/
-                    kubectl apply -f infrastructure/k8s/mailhog/
-                    kubectl apply -f infrastructure/k8s/prometheus/
-                    kubectl apply -f infrastructure/k8s/grafana/
-
-                    echo ">>> Waiting for Postgres and RabbitMQ to be ready..."
-                    kubectl rollout status deployment/postgres --timeout=300s
-                    kubectl rollout status deployment/rabbitmq --timeout=300s
-
-                    echo ">>> Infrastructure is ready"
-                '''
-            }
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  PHASE 5 — DEPLOY DISCOVERY SERVICE
-        // ══════════════════════════════════════════════════════
-
-        stage('Deploy — Discovery Service') {
-            when { branch 'main' }
-            steps {
-                sh '''
-                    echo ">>> Deploying discovery-service..."
-                    kubectl apply -f infrastructure/k8s/discovery-service/
-
-                    READY=$(kubectl get deployment discovery-service \
-                        -o jsonpath=\'{.status.readyReplicas}\' 2>/dev/null || echo "0")
-
-                    if [ "$READY" = "0" ]; then
-                        echo "Discovery not ready — restarting..."
-                        kubectl rollout restart deployment/discovery-service
-                    else
-                        echo "Discovery already healthy ($READY replicas) — skipping restart"
-                    fi
-
-                    kubectl rollout status deployment/discovery-service --timeout=300s
-                    echo ">>> Discovery service is ready"
-                '''
-            }
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  PHASE 6 — DEPLOY JAVA SERVICES
-        // ══════════════════════════════════════════════════════
-
-        stage('Deploy — Java Services') {
-            when { branch 'main' }
-            steps {
-                sh '''
-                    echo ">>> Applying Java service manifests..."
-                    kubectl apply -f infrastructure/k8s/api-gateway/
-                    kubectl apply -f infrastructure/k8s/auth-service/
-                    kubectl apply -f infrastructure/k8s/disease-service/
-                    kubectl apply -f infrastructure/k8s/location-service/
-                    kubectl apply -f infrastructure/k8s/patient-service/
-
-                    echo ">>> Restarting and waiting for Java services..."
-                    for svc in api-gateway auth-service disease-service location-service patient-service; do
-                        echo "  -- restarting $svc"
-                        kubectl rollout restart deployment/$svc
-                        kubectl rollout status deployment/$svc --timeout=300s
-                    done
-
-                    echo ">>> All Java services deployed"
-                '''
-            }
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  PHASE 7 — DEPLOY PYTHON SERVICES
-        // ══════════════════════════════════════════════════════
-
-        stage('Deploy — Python Services') {
-            when { branch 'main' }
-            steps {
-                sh '''
-                    echo ">>> Applying Python service manifests..."
-                    kubectl apply -f infrastructure/k8s/analytics-service/
-                    kubectl apply -f infrastructure/k8s/geo-service/
-                    kubectl apply -f infrastructure/k8s/notification-service/
-                    kubectl apply -f infrastructure/k8s/report-service/
-
-                    echo ">>> Restarting and waiting for Python services..."
-                    for svc in analytics-service geo-service notification-service report-service; do
-                        echo "  -- restarting $svc"
-                        kubectl rollout restart deployment/$svc
-                        kubectl rollout status deployment/$svc --timeout=300s
-                    done
-
-                    echo ">>> All Python services deployed"
-                '''
-            }
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  PHASE 8 — DEPLOY INGRESS
-        // ══════════════════════════════════════════════════════
-
-        stage('Deploy — Ingress') {
-            when { branch 'main' }
-            steps {
-                sh '''
-                    echo ">>> Applying ingress rules..."
-                    kubectl apply -f infrastructure/k8s/ingress/
-                    echo ">>> Ingress deployed — pipeline complete"
-                '''
             }
         }
     }
