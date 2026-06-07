@@ -37,11 +37,11 @@ pipeline {
             steps {
                 sh '''
                     echo ">>> Starting test infrastructure (project: ${COMPOSE_PROJECT})..."
-                    docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} up -d
+                    docker-compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} up -d
 
                     echo ">>> Waiting for Postgres to accept connections..."
                     for i in $(seq 1 30); do
-                        docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
+                        docker-compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
                             exec -T postgres pg_isready -U dsas_user && break
                         echo "  Postgres not ready yet ($i/30)..."
                         sleep 3
@@ -49,7 +49,7 @@ pipeline {
 
                     echo ">>> Waiting for RabbitMQ to be ready..."
                     for i in $(seq 1 30); do
-                        docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
+                        docker-compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} \
                             exec -T rabbitmq rabbitmq-diagnostics ping && break
                         echo "  RabbitMQ not ready yet ($i/30)..."
                         sleep 3
@@ -242,7 +242,7 @@ pipeline {
             // Always tear down test infra, even if build fails
             sh '''
                 echo ">>> Tearing down test infrastructure..."
-                docker compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} down -v || true
+                docker-compose -p ${COMPOSE_PROJECT} -f ${COMPOSE_FILE} down -v || true
                 echo ">>> Cleanup done"
             '''
         }
