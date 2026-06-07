@@ -3,7 +3,6 @@ services:
   # ── Infrastructure ───────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
-    container_name: dsas-postgres
     environment:
       POSTGRES_USER: dsas_user
       POSTGRES_PASSWORD: dsas_password
@@ -23,7 +22,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
-    container_name: dsas-rabbitmq
+    
     environment:
       RABBITMQ_DEFAULT_USER: dsas_user
       RABBITMQ_DEFAULT_PASS: dsas_password
@@ -42,7 +41,7 @@ services:
 
   mailhog:
     image: mailhog/mailhog:latest
-    container_name: dsas-mailhog
+    
     ports:
       - "1025:1025"
       - "8025:8025"
