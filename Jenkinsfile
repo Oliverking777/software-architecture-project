@@ -71,11 +71,11 @@ pipeline {
             }
         }
 
-        ══════════════════════════════════════════════════════
-         PHASE 1 — BUILD & TEST JAVA SERVICES
-         ✅ All Java services confirmed passing — temporarily
-         commented out to speed up Python debugging
-        ══════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
+        //  PHASE 1 — BUILD & TEST JAVA SERVICES
+        //  ✅ All Java services confirmed passing — temporarily
+        //  commented out to speed up Python debugging
+        // ══════════════════════════════════════════════════════
 
         stage('Build & Test — Java Services') {
             parallel {
