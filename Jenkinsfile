@@ -71,34 +71,34 @@ pipeline {
             }
         }
 
-        // ══════════════════════════════════════════════════════
-        //  PHASE 1 — BUILD & TEST JAVA SERVICES
-        //  ✅ All Java services confirmed passing — temporarily
-        //  commented out to speed up Python debugging
-        // ══════════════════════════════════════════════════════
+        ══════════════════════════════════════════════════════
+         PHASE 1 — BUILD & TEST JAVA SERVICES
+         ✅ All Java services confirmed passing — temporarily
+         commented out to speed up Python debugging
+        ══════════════════════════════════════════════════════
 
-        // stage('Build & Test — Java Services') {
-        //     parallel {
-        //         stage('api-gateway') {
-        //             steps { buildAndTestJavaNoDB('api-gateway') }
-        //         }
-        //         stage('discovery-service') {
-        //             steps { buildAndTestJavaNoDB('discovery-service') }
-        //         }
-        //         stage('auth-service') {
-        //             steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
-        //         }
-        //         stage('disease-service') {
-        //             steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
-        //         }
-        //         stage('location-service') {
-        //             steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
-        //         }
-        //         stage('patient-service') {
-        //             steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
-        //         }
-        //     }
-        // }
+        stage('Build & Test — Java Services') {
+            parallel {
+                stage('api-gateway') {
+                    steps { buildAndTestJavaNoDB('api-gateway') }
+                }
+                stage('discovery-service') {
+                    steps { buildAndTestJavaNoDB('discovery-service') }
+                }
+                stage('auth-service') {
+                    steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
+                }
+                stage('disease-service') {
+                    steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
+                }
+                stage('location-service') {
+                    steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
+                }
+                stage('patient-service') {
+                    steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
+                }
+            }
+        }
 
         // ══════════════════════════════════════════════════════
         //  PHASE 2 — BUILD & TEST PYTHON SERVICES
