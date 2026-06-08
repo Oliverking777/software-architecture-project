@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: geo-service
+
+spec:
+  selector:
+    app: geo-service
+
+  ports:
+    - port: 8088
+      targetPort: 8088
+
+  type: ClusterIP

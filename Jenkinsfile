@@ -251,14 +251,16 @@ def buildAndPushImage(String service, String context) {
         usernameVariable: 'HUB_USER',
         passwordVariable: 'HUB_PASS'
     )]) {
-        sh '''
-            docker build \
-                -t ''' + HUB_USER + '/' + service + ':' + env.BUILD_NUMBER + ''' \
-                -t ''' + HUB_USER + '/' + service + ''':latest \
-                ''' + context + '''
-            echo $HUB_PASS | docker login -u $HUB_USER --password-stdin
-            docker push ''' + HUB_USER + '/' + service + ':' + env.BUILD_NUMBER + '''
-            docker push ''' + HUB_USER + '/' + service + ''':latest
-        '''
+        withEnv(["SERVICE=${service}", "CONTEXT=${context}"]) {
+            sh '''
+                docker build \
+                    -t $HUB_USER/$SERVICE:$BUILD_NUMBER \
+                    -t $HUB_USER/$SERVICE:latest \
+                    $CONTEXT
+                echo $HUB_PASS | docker login -u $HUB_USER --password-stdin
+                docker push $HUB_USER/$SERVICE:$BUILD_NUMBER
+                docker push $HUB_USER/$SERVICE:latest
+            '''
+        }
     }
 }

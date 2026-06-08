@@ -1,0 +1,76 @@
+---
+# =============================================================
+#  k3s installation
+#  - Installs k3s with Traefik as the ingress controller
+#  - Creates a symlink so `kubectl` works for the root user
+#  - Waits for the node to become Ready before continuing
+# =============================================================
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: "{{ k3s_install_dir }}/k3s"
+  register: k3s_binary
+
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s_install.sh
+    mode: "0755"
+  when: not k3s_binary.stat.exists
+
+- name: Install k3s (with Traefik enabled)
+  ansible.builtin.command:
+    cmd: /tmp/k3s_install.sh
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    # Disable the default Traefik v1 so we use Traefik v2 (bundled in newer k3s)
+    INSTALL_K3S_EXEC: >-
+      server
+      --disable traefik
+  when: not k3s_binary.stat.exists
+  notify: Restart k3s
+
+- name: Ensure k3s service is started and enabled
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+    enabled: true
+
+- name: Wait for k3s kubeconfig to appear
+  ansible.builtin.wait_for:
+    path: "{{ kubeconfig_path }}"
+    timeout: 60
+
+- name: Create kubectl symlink for convenience
+  ansible.builtin.file:
+    src: "{{ k3s_install_dir }}/k3s"
+    dest: /usr/local/bin/kubectl
+    state: link
+  ignore_errors: true
+
+- name: Wait for the node to become Ready
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl wait node
+      --all
+      --for=condition=Ready
+      --timeout=120s
+  changed_when: false
+
+- name: Install Traefik v2 via Helm (k3s HelmChart CRD)
+  ansible.builtin.copy:
+    content: "{{ lookup('template', 'traefik-helmchart.yml.j2') }}"
+    dest: /var/lib/rancher/k3s/server/manifests/traefik.yaml
+    mode: "0644"
+
+- name: Wait for Traefik pod to be Running
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl wait pod
+      -n kube-system
+      -l app.kubernetes.io/name=traefik
+      --for=condition=Ready
+      --timeout=180s
+  changed_when: false
+  retries: 3
+  delay: 10

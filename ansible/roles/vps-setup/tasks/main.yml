@@ -1,0 +1,22 @@
+---
+# =============================================================
+#  Role: vps-setup
+#  Installs k3s, Traefik (bundled), and cert-manager.
+#  Fully idempotent — safe to run on every Jenkins build.
+# =============================================================
+
+- name: Include OS prerequisites
+  ansible.builtin.import_tasks: prerequisites.yml
+  tags: [setup]
+
+- name: Include k3s install
+  ansible.builtin.import_tasks: k3s.yml
+  tags: [setup, k3s]
+
+- name: Include cert-manager install
+  ansible.builtin.import_tasks: cert_manager.yml
+  tags: [setup, certmanager]
+
+- name: Include namespace and secrets bootstrap
+  ansible.builtin.import_tasks: bootstrap.yml
+  tags: [setup, bootstrap]
