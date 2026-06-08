@@ -1,6 +1,7 @@
 package disease_surveillance.auth_service.serviceImpl;
 
 import disease_surveillance.auth_service.dto.ApiResponse;
+import java.util.UUID;
 import disease_surveillance.auth_service.dto.UserDto;
 import disease_surveillance.auth_service.entity.Role;
 import disease_surveillance.auth_service.entity.User;
@@ -67,7 +68,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public ApiResponse<UserDto.ResponseUser> findById(Long id) {
+    public ApiResponse<UserDto.ResponseUser> findById(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return ApiResponse.success("User retrieved", toResponseUser(user));

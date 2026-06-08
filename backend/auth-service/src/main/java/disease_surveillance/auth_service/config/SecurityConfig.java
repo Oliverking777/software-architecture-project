@@ -27,11 +27,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/auth-service/register",
-                                "/auth-service/login"
+                                "/auth-service/login",
+                                "/actuator/prometheus",
+                                "/actuator/health",
+                                "/actuator"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Register JWT filter BEFORE Spring's default username/password filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

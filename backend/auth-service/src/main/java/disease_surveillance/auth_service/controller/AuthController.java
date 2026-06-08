@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/auth-service")
 @RequiredArgsConstructor
@@ -28,7 +30,7 @@ public class AuthController {
     }
 
     @GetMapping("/users/{id}")
-    public ResponseEntity<ApiResponse<UserDto.ResponseUser>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserDto.ResponseUser>> getUserById(@PathVariable UUID id) {
         return ResponseEntity.ok(authService.findById(id));
     }
 
