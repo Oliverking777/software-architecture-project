@@ -1,0 +1,1 @@
+- [DSAS project overview](project_dsas_overview.md) — microservices disease-surveillance platform: Java/Spring + Python/FastAPI backends, React frontend, Eureka/RabbitMQ/Postgres, Docker Compose + K8s
