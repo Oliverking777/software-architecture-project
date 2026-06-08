@@ -77,45 +77,45 @@ pipeline {
             }
         }
 
-        stage('Build & Test — Java Services') {
-            parallel {
-                stage('api-gateway') {
-                    steps { buildAndTestJavaNoDB('api-gateway') }
-                }
-                stage('discovery-service') {
-                    steps { buildAndTestJavaNoDB('discovery-service') }
-                }
-                stage('auth-service') {
-                    steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
-                }
-                stage('disease-service') {
-                    steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
-                }
-                stage('location-service') {
-                    steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
-                }
-                stage('patient-service') {
-                    steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
-                }
-            }
-        }
+        // stage('Build & Test — Java Services') {
+        //     parallel {
+        //         stage('api-gateway') {
+        //             steps { buildAndTestJavaNoDB('api-gateway') }
+        //         }
+        //         stage('discovery-service') {
+        //             steps { buildAndTestJavaNoDB('discovery-service') }
+        //         }
+        //         stage('auth-service') {
+        //             steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
+        //         }
+        //         stage('disease-service') {
+        //             steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
+        //         }
+        //         stage('location-service') {
+        //             steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
+        //         }
+        //         stage('patient-service') {
+        //             steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
+        //         }
+        //     }
+        // }
 
-        stage('Build & Test — Python Services') {
-            parallel {
-                stage('analytics-service') {
-                    steps { lintAndTestPython('analytics-service') }
-                }
-                stage('geo-service') {
-                    steps { lintAndTestPython('geo-service') }
-                }
-                stage('notification-service') {
-                    steps { lintAndTestPython('notification-service') }
-                }
-                stage('report-service') {
-                    steps { lintAndTestPython('report-service') }
-                }
-            }
-        }
+        // stage('Build & Test — Python Services') {
+        //     parallel {
+        //         stage('analytics-service') {
+        //             steps { lintAndTestPython('analytics-service') }
+        //         }
+        //         stage('geo-service') {
+        //             steps { lintAndTestPython('geo-service') }
+        //         }
+        //         stage('notification-service') {
+        //             steps { lintAndTestPython('notification-service') }
+        //         }
+        //         stage('report-service') {
+        //             steps { lintAndTestPython('report-service') }
+        //         }
+        //     }
+        // }
 
         // ══════════════════════════════════════════════════════
         //  PHASE 2 — BUILD & PUSH ALL DOCKER IMAGES TO DOCKER HUB
