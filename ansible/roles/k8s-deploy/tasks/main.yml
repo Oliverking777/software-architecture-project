@@ -1,14 +1,14 @@
 ---
 # =============================================================
 #  Role: k8s-deploy
-#  Copies all Kubernetes manifests to the VPS and applies them.
-#  Then does a rolling restart of all app deployments so the
-#  new :latest images are pulled from Docker Hub.
+#  apply_manifests: runs only when deploy_manifests=true
+#  rolling_restart + verify: always run
 # =============================================================
 
 - name: Include manifest copy and apply
   ansible.builtin.import_tasks: apply_manifests.yml
   tags: [deploy, manifests]
+  when: deploy_manifests | default(false) | bool
 
 - name: Include rolling restart of app services
   ansible.builtin.import_tasks: rolling_restart.yml

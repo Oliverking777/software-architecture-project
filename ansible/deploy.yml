@@ -1,9 +1,11 @@
 ---
 # =============================================================
 #  DSAS — Master Deployment Playbook
+#  Targeted mode: skips vps-setup and manifest apply.
+#  Only restarts and verifies the specified services.
 # =============================================================
 
-- name: DSAS - VPS Setup and Kubernetes deploy
+- name: DSAS - Deploy to Kubernetes
   hosts: vps
   become: true
   gather_facts: true
@@ -12,8 +14,5 @@
     - vault/secrets.yml
 
   roles:
-    - role: vps-setup
-      tags: [setup, infra]
-
     - role: k8s-deploy
       tags: [deploy, k8s]

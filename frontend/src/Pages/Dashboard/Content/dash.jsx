@@ -10,7 +10,7 @@ import {
 import {
   useKpis, useCasesByDisease, useCasesByRegion,
   useActiveAlerts, usePolledAlerts,
-} from "../hooks/useDashboard";
+} from "../../../hooks/useDashboard";
 import { useDiseases } from "../../../hooks/useDashboard";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
