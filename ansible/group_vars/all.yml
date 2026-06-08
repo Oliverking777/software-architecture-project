@@ -34,6 +34,7 @@ app_deployments:
   - geo-service
   - notification-service
   - report-service
+  - frontend
 
 # ── Infra services (applied but NOT restarted on each build) ─
 infra_deployments:

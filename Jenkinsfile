@@ -15,7 +15,9 @@ pipeline {
     }
 
     triggers {
-        pollSCM('H/5 * * * *')
+        // Trigger on GitHub push webhooks (preferred) and fall back to polling
+        githubPush()
+        pollSCM('H/1 * * * *')
     }
 
     stages {
@@ -46,74 +48,74 @@ pipeline {
         //  to save time. Uncomment when needed.
         // ══════════════════════════════════════════════════════
 
-        // stage('Start Test Infrastructure') {
-        //     steps {
-        //         sh '''
-        //             cd infrastructure
-        //             docker compose -p ${COMPOSE_PROJECT} up -d postgres rabbitmq mailhog
-        //
-        //             echo ">>> Waiting for Postgres..."
-        //             for i in $(seq 1 30); do
-        //                 docker compose -p ${COMPOSE_PROJECT} exec -T postgres pg_isready -U dsas_user && break
-        //                 echo "  Postgres not ready yet ($i/30)..."
-        //                 sleep 3
-        //             done
-        //
-        //             echo ">>> Running init-db.sql..."
-        //             PG_CONTAINER=$(docker compose -p ${COMPOSE_PROJECT} ps -q postgres)
-        //             docker cp init-db.sql ${PG_CONTAINER}:/tmp/init-db.sql
-        //             docker compose -p ${COMPOSE_PROJECT} exec -T postgres psql -U dsas_user -d dsas_db -f /tmp/init-db.sql
-        //
-        //             echo ">>> Waiting for RabbitMQ..."
-        //             for i in $(seq 1 30); do
-        //                 docker compose -p ${COMPOSE_PROJECT} exec -T rabbitmq rabbitmq-diagnostics ping && break
-        //                 echo "  RabbitMQ not ready yet ($i/30)..."
-        //                 sleep 3
-        //             done
-        //             echo ">>> Test infrastructure is ready"
-        //         '''
-        //     }
-        // }
+        stage('Start Test Infrastructure') {
+            steps {
+                sh '''
+                    cd infrastructure
+                    docker compose -p ${COMPOSE_PROJECT} up -d postgres rabbitmq mailhog
+        
+                    echo ">>> Waiting for Postgres..."
+                    for i in $(seq 1 30); do
+                        docker compose -p ${COMPOSE_PROJECT} exec -T postgres pg_isready -U dsas_user && break
+                        echo "  Postgres not ready yet ($i/30)..."
+                        sleep 3
+                    done
+        
+                    echo ">>> Running init-db.sql..."
+                    PG_CONTAINER=$(docker compose -p ${COMPOSE_PROJECT} ps -q postgres)
+                    docker cp init-db.sql ${PG_CONTAINER}:/tmp/init-db.sql
+                    docker compose -p ${COMPOSE_PROJECT} exec -T postgres psql -U dsas_user -d dsas_db -f /tmp/init-db.sql
+        
+                    echo ">>> Waiting for RabbitMQ..."
+                    for i in $(seq 1 30); do
+                        docker compose -p ${COMPOSE_PROJECT} exec -T rabbitmq rabbitmq-diagnostics ping && break
+                        echo "  RabbitMQ not ready yet ($i/30)..."
+                        sleep 3
+                    done
+                    echo ">>> Test infrastructure is ready"
+                '''
+            }
+        }
 
-        // stage('Build & Test — Java Services') {
-        //     parallel {
-        //         stage('api-gateway') {
-        //             steps { buildAndTestJavaNoDB('api-gateway') }
-        //         }
-        //         stage('discovery-service') {
-        //             steps { buildAndTestJavaNoDB('discovery-service') }
-        //         }
-        //         stage('auth-service') {
-        //             steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
-        //         }
-        //         stage('disease-service') {
-        //             steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
-        //         }
-        //         stage('location-service') {
-        //             steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
-        //         }
-        //         stage('patient-service') {
-        //             steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
-        //         }
-        //     }
-        // }
+        stage('Build & Test — Java Services') {
+            parallel {
+                stage('api-gateway') {
+                    steps { buildAndTestJavaNoDB('api-gateway') }
+                }
+                stage('discovery-service') {
+                    steps { buildAndTestJavaNoDB('discovery-service') }
+                }
+                stage('auth-service') {
+                    steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
+                }
+                stage('disease-service') {
+                    steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
+                }
+                stage('location-service') {
+                    steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
+                }
+                stage('patient-service') {
+                    steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
+                }
+            }
+        }
 
-        // stage('Build & Test — Python Services') {
-        //     parallel {
-        //         stage('analytics-service') {
-        //             steps { lintAndTestPython('analytics-service') }
-        //         }
-        //         stage('geo-service') {
-        //             steps { lintAndTestPython('geo-service') }
-        //         }
-        //         stage('notification-service') {
-        //             steps { lintAndTestPython('notification-service') }
-        //         }
-        //         stage('report-service') {
-        //             steps { lintAndTestPython('report-service') }
-        //         }
-        //     }
-        // }
+        stage('Build & Test — Python Services') {
+            parallel {
+                stage('analytics-service') {
+                    steps { lintAndTestPython('analytics-service') }
+                }
+                stage('geo-service') {
+                    steps { lintAndTestPython('geo-service') }
+                }
+                stage('notification-service') {
+                    steps { lintAndTestPython('notification-service') }
+                }
+                stage('report-service') {
+                    steps { lintAndTestPython('report-service') }
+                }
+            }
+        }
 
         // ══════════════════════════════════════════════════════
         //  PHASE 2 — BUILD & PUSH ALL DOCKER IMAGES TO DOCKER HUB
@@ -156,6 +158,12 @@ pipeline {
                 stage('img: report-service') {
                     steps { buildAndPushImage('report-service', 'backend/report-service') }
                 }
+            }
+        }
+
+        stage('Build & Push — Frontend Image') {
+            steps {
+                buildAndPushImage('frontend', 'frontend/react-app')
             }
         }
 
