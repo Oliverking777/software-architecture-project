@@ -10,6 +10,7 @@ pipeline {
 
     environment {
         COMPOSE_PROJECT = "dsas-test-${BUILD_NUMBER}"
+        DOCKER_USER     = 'tinfeh'
     }
 
     triggers {
@@ -263,11 +264,11 @@ def buildAndPushImage(String service, String context) {
     withEnv(["SERVICE=${service}", "CONTEXT=${context}"]) {
         sh '''
             docker build \
-                -t $HUB_USER/$SERVICE:$BUILD_NUMBER \
-                -t $HUB_USER/$SERVICE:latest \
+                -t $DOCKER_USER/$SERVICE:$BUILD_NUMBER \
+                -t $DOCKER_USER/$SERVICE:latest \
                 $CONTEXT
-            docker push $HUB_USER/$SERVICE:$BUILD_NUMBER
-            docker push $HUB_USER/$SERVICE:latest
+            docker push $DOCKER_USER/$SERVICE:$BUILD_NUMBER
+            docker push $DOCKER_USER/$SERVICE:latest
         '''
     }
 }
