@@ -193,7 +193,7 @@ pipeline {
         community.general \
         ansible.posix \
         --force-with-deps \
-        --quiet
+        
 
     ansible-playbook ansible/deploy.yml \
         -i ansible/inventory/hosts.ini \
