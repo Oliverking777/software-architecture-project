@@ -21,7 +21,7 @@ data:
             - 'patient-service:8082'
             - 'disease-service:8083'
             - 'location-service:8084'
-            - 'api-gateway:8080'
+            - 'api-gateway:8000'
 
       - job_name: 'python-services'
         static_configs:

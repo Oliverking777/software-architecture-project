@@ -146,6 +146,12 @@ pipeline {
         // ══════════════════════════════════════════════════════
 
         stage('Deploy to VPS via Ansible') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                }
+            }
             steps {
                 withCredentials([
                     string(

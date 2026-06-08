@@ -8,7 +8,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/gateway': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/gateway/, ''),
       },
