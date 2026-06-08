@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('dsasadmin@gmail.com')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [remember, setRemember] = useState(true)
-  const [error, setError] = useState('')
+  const { login, loading, error, setError } = useAuth()
 
-  const handleSignIn = (e) => {
+  const [email, setEmail]             = useState('')
+  const [password, setPassword]       = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [remember, setRemember]       = useState(true)
+
+  const handleSignIn = async (e) => {
     e.preventDefault()
-    if (email === 'dsasadmin@gmail.com' && password === 'dsas_password') {
+    const result = await login(email, password)
+    if (result.success) {
       navigate('/dashboard')
-    } else {
-      setError('Invalid credentials. Use the demo account below.')
     }
   }
 
@@ -60,7 +61,6 @@ export default function Login() {
 
         {/* Center hero */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          {/* Live badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: 'rgba(255,255,255,0.12)',
@@ -78,12 +78,11 @@ export default function Login() {
             Monitor outbreaks, detect anomalies, and coordinate public health response across all regions in real time.
           </p>
 
-          {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginTop: 36 }}>
             {[
               { value: '18.4K', label: 'CASES TRACKED' },
-              { value: '47', label: 'DISEASES' },
-              { value: '10', label: 'REGIONS' },
+              { value: '47',    label: 'DISEASES' },
+              { value: '10',    label: 'REGIONS' },
             ].map((s) => (
               <div key={s.label} style={{
                 background: 'rgba(255,255,255,0.1)',
@@ -134,6 +133,7 @@ export default function Login() {
                   style={inputStyle}
                   placeholder="your@email.com"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -160,6 +160,7 @@ export default function Login() {
                   style={{ ...inputStyle, paddingRight: 44 }}
                   placeholder="••••••••"
                   required
+                  disabled={loading}
                 />
                 <button
                   type="button"
@@ -223,36 +224,31 @@ export default function Login() {
             {/* Sign In button */}
             <button
               type="submit"
+              disabled={loading}
               style={{
                 width: '100%', padding: '14px',
-                background: 'linear-gradient(135deg, #0891b2, #0e7490)',
+                background: loading
+                  ? '#a5f3fc'
+                  : 'linear-gradient(135deg, #0891b2, #0e7490)',
                 border: 'none', borderRadius: 12,
                 color: 'white', fontWeight: 700, fontSize: 15,
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center',
                 justifyContent: 'center', gap: 8,
+                transition: 'opacity 0.2s',
               }}
             >
-              Sign In
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <line x1="5" y1="12" x2="19" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <polyline points="12,5 19,12 12,19" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              {loading ? 'Signing in...' : (
+                <>
+                  Sign In
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <line x1="5" y1="12" x2="19" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                    <polyline points="12,5 19,12 12,19" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </>
+              )}
             </button>
           </form>
-
-          {/* Demo account */}
-          <div style={{
-            marginTop: 24, background: '#f9fafb',
-            border: '1px solid #e5e7eb', borderRadius: 12, padding: 16,
-          }}>
-            <p style={{ fontWeight: 600, color: '#374151', fontSize: 13, margin: '0 0 4px' }}>Demo account</p>
-            <p style={{ color: '#6b7280', fontSize: 12, margin: '0 0 8px' }}>Use these credentials to sign in:</p>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontFamily: 'monospace', fontSize: 12, color: '#0891b2' }}>
-              <span>dsasadmin@gmail.com</span>
-              <span style={{ color: '#d1d5db' }}>·</span>
-              <span>dsas_password</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>

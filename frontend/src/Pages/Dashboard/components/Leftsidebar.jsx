@@ -1,5 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 
+const BLUE = '#2746F5'
+const BLUE_DARK = '#1e38d0'
+const BLUE_LIGHT = 'rgba(255,255,255,0.12)'
+const BLUE_HOVER = 'rgba(255,255,255,0.08)'
+
 const monitoringItems = [
   {
     label: 'Dashboard',
@@ -48,8 +53,8 @@ const monitoringItems = [
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
         <line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        <line x1="12" y1="20" x2="12" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        <line x1="6" y1="20" x2="6" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="12" y1="20" x2="12" y2="4"  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="6"  y1="20" x2="6"  y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -82,8 +87,8 @@ const monitoringItems = [
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
         <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        <line x1="8" y1="2" x2="8" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        <line x1="16" y1="6" x2="16" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="8"  y1="2"  x2="8"  y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="16" y1="6"  x2="16" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -144,23 +149,17 @@ export default function LeftSidebar({ activeItem, onItemClick }) {
           textAlign: 'left',
           fontSize: 14,
           fontWeight: isActive ? 600 : 400,
-          background: isActive ? '#ecfeff' : 'transparent',
-          color: isActive ? '#0891b2' : '#374151',
+          background: isActive ? BLUE_LIGHT : 'transparent',
+          color: '#fff',
           width: '100%',
           position: 'relative',
-          transition: 'background 0.15s, color 0.15s',
+          transition: 'background 0.15s',
         }}
         onMouseEnter={e => {
-          if (!isActive) {
-            e.currentTarget.style.background = '#f9fafb'
-            e.currentTarget.style.color = '#111827'
-          }
+          if (!isActive) e.currentTarget.style.background = BLUE_HOVER
         }}
         onMouseLeave={e => {
-          if (!isActive) {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = '#374151'
-          }
+          if (!isActive) e.currentTarget.style.background = 'transparent'
         }}
       >
         {/* Active indicator bar */}
@@ -172,14 +171,14 @@ export default function LeftSidebar({ activeItem, onItemClick }) {
             transform: 'translateY(-50%)',
             width: 3,
             height: 20,
-            background: '#0891b2',
+            background: '#fff',
             borderRadius: '0 3px 3px 0',
           }} />
         )}
-        <span style={{ color: isActive ? '#0891b2' : '#6b7280', display: 'flex' }}>
+        <span style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.65)', display: 'flex' }}>
           {item.icon}
         </span>
-        <span style={{ flex: 1 }}>{item.label}</span>
+        <span style={{ flex: 1, color: isActive ? '#fff' : 'rgba(255,255,255,0.8)' }}>{item.label}</span>
         {item.badge && (
           <span style={{
             background: '#ef4444',
@@ -200,8 +199,8 @@ export default function LeftSidebar({ activeItem, onItemClick }) {
   return (
     <aside style={{
       width: 260,
-      background: 'white',
-      borderRight: '1px solid #f3f4f6',
+      background: BLUE,
+      borderRight: 'none',
       display: 'flex',
       flexDirection: 'column',
       position: 'fixed',
@@ -215,7 +214,7 @@ export default function LeftSidebar({ activeItem, onItemClick }) {
       <div style={{
         height: 60,
         padding: '0 20px',
-        borderBottom: '1px solid #f3f4f6',
+        borderBottom: '1px solid rgba(255,255,255,0.12)',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
@@ -223,7 +222,7 @@ export default function LeftSidebar({ activeItem, onItemClick }) {
       }}>
         <div style={{
           width: 36, height: 36, borderRadius: 10,
-          background: 'linear-gradient(135deg, #0891b2, #0e7490)',
+          background: 'rgba(255,255,255,0.18)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
@@ -232,17 +231,17 @@ export default function LeftSidebar({ activeItem, onItemClick }) {
           </svg>
         </div>
         <div>
-          <p style={{ fontWeight: 700, fontSize: 15, color: '#111827', margin: 0 }}>DSAS</p>
-          <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>Disease Surveillance</p>
+          <p style={{ fontWeight: 700, fontSize: 15, color: '#fff', margin: 0 }}>DSAS</p>
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', margin: 0 }}>Disease Surveillance</p>
         </div>
       </div>
 
-      {/* ── MONITORING section ── */}
+      {/* ── Nav ── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px 8px' }}>
         <p style={{
           fontSize: 10,
           fontWeight: 700,
-          color: '#9ca3af',
+          color: 'rgba(255,255,255,0.4)',
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
           margin: '0 0 8px 12px',
@@ -250,19 +249,13 @@ export default function LeftSidebar({ activeItem, onItemClick }) {
           MONITORING
         </p>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {monitoringItems.map(item => (
-            <NavItem key={item.label} item={item} />
-          ))}
+          {monitoringItems.map(item => <NavItem key={item.label} item={item}/>)}
         </nav>
 
-        {/* Divider */}
-        <div style={{ height: 1, background: '#f3f4f6', margin: '12px 0' }} />
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.12)', margin: '12px 0' }} />
 
-        {/* Bottom items (no section label in the image) */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {bottomItems.map(item => (
-            <NavItem key={item.label} item={item} />
-          ))}
+          {bottomItems.map(item => <NavItem key={item.label} item={item}/>)}
         </nav>
       </div>
 

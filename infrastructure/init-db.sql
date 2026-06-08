@@ -40,6 +40,31 @@ GRANT ALL PRIVILEGES ON DATABASE dsas_reports   TO dsas_user;
 
 
 -- ============================================================
+-- SEED : dsas_auth — default ADMIN user
+-- Email   : dsasadmin@gmail.com
+-- Password: dsas_password  (BCrypt hashed below)
+--
+-- NOTE: This runs AFTER Hibernate creates the users table on
+--       auth-service first startup. If you apply this script
+--       before auth-service starts, the INSERT will fail
+--       because the table doesn't exist yet.
+--       Run it AFTER all services are up with:
+--         kubectl exec -it <postgres-pod> -- psql -U dsas_user -d dsas_auth -f /tmp/init-db.sql
+-- ============================================================
+\connect dsas_auth
+
+INSERT INTO users (full_name, email, password_hash, role, created_at)
+VALUES (
+    'DSAS Administrator',
+    'dsasadmin@gmail.com',
+    '$2b$12$a3OTB2f3FMQUj5.hdZiu/esrmLo7sup4mvNt1M5BUFUQnoKGO.VBG',
+    'ADMIN',
+    NOW()
+)
+ON CONFLICT (email) DO NOTHING;
+
+
+-- ============================================================
 -- BASE : dsas_analytics  (analytics-service — Python/SQLAlchemy)
 -- ============================================================
 \connect dsas_analytics
