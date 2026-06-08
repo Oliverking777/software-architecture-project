@@ -1,0 +1,41 @@
+---
+# =============================================================
+#  cert-manager — installs via kubectl apply (CRDs + manifests)
+#  and creates the ClusterIssuer for Let's Encrypt
+# =============================================================
+
+- name: Check if cert-manager is already installed
+  ansible.builtin.command:
+    cmd: k3s kubectl get namespace cert-manager
+  register: cert_manager_ns
+  failed_when: false
+  changed_when: false
+
+- name: Apply cert-manager CRDs and manifests
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl apply -f
+      https://github.com/cert-manager/cert-manager/releases/download/{{ cert_manager_version }}/cert-manager.yaml
+  when: cert_manager_ns.rc != 0
+
+- name: Wait for cert-manager webhook to be Ready
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl wait deployment cert-manager-webhook
+      -n cert-manager
+      --for=condition=Available
+      --timeout=120s
+  changed_when: false
+  retries: 5
+  delay: 15
+
+- name: Template ClusterIssuer manifest
+  ansible.builtin.template:
+    src: clusterissuer.yml.j2
+    dest: /tmp/dsas-clusterissuer.yml
+    mode: "0644"
+
+- name: Apply Let's Encrypt ClusterIssuer
+  ansible.builtin.command:
+    cmd: k3s kubectl apply -f /tmp/dsas-clusterissuer.yml
+  changed_when: false

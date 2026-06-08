@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="3b357167-ac1a-4cce-87e8-e28d8eca65ef" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../analytics-service/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../analytics-service/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../analytics-service/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../analytics-service/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../api-gateway/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../api-gateway/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../api-gateway/src/main/java/disease_surveillance/api_gateway/filter/JwtAuthInterceptor.java" beforeDir="false" afterPath="$PROJECT_DIR$/../api-gateway/src/main/java/disease_surveillance/api_gateway/filter/JwtAuthInterceptor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../api-gateway/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../api-gateway/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../auth-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../auth-service/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../auth-service/src/main/java/disease_surveillance/auth_service/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/../auth-service/src/main/java/disease_surveillance/auth_service/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../auth-service/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../auth-service/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../discovery-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../discovery-service/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../discovery-service/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../discovery-service/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../disease-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../disease-service/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../disease-service/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../disease-service/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../location-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../location-service/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../location-service/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../location-service/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../notification-service/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../notification-service/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../notification-service/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../notification-service/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../patient-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../patient-service/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../patient-service/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../patient-service/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../report-service/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../report-service/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../report-service/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../report-service/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../infrastructure/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../../infrastructure/docker-compose.yml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Oliverking777"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Oliverking777/software-architecture-project.git",
+    "accountId": "1440d26f-72e2-4cbd-b708-e0b35d84f692"
+  }
+}]]></component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 5,
+  "fromUser": false
+}]]></component>
+  <component name="ProjectId" id="3Ec6fcstl4JfHZs6MyuPaYWn2XW" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/home/mr-oliver/Desktop/software-architecture-project/backend/notification-service",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-PY-261.24374.152" />
+        <option value="bundled-python-sdk-c59985aa861c-c2ffad84badb-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.24374.152" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="3b357167-ac1a-4cce-87e8-e28d8eca65ef" name="Changes" comment="" />
+      <created>1780465614718</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1780465614718</updated>
+      <workItem from="1780465616092" duration="754000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

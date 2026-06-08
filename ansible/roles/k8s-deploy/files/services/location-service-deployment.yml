@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: location-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: location-service
+
+  template:
+    metadata:
+      labels:
+        app: location-service
+
+    spec:
+      containers:
+        - name: location-service
+          image: tinfeh/location-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8084
+          env:
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              value: "http://eureka-server:8761/eureka/"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/dsas_patients"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "dsas_user"
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "dsas_password"
+ 

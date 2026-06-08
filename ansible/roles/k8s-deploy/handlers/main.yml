@@ -1,0 +1,5 @@
+---
+- name: Reload k3s manifests
+  ansible.builtin.command:
+    cmd: k3s kubectl apply -f /opt/dsas/k8s/ --namespace={{ k8s_namespace }} -R
+  changed_when: true
