@@ -182,29 +182,27 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        # Write vault password to a temp file
-                        echo "$VAULT_PASS" > /tmp/dsas_vault_pass.txt
-                        chmod 600 /tmp/dsas_vault_pass.txt
+    export PATH=$PATH:/var/jenkins_home/.local/bin
 
-                        # Install Ansible if not present on Jenkins agent
-                        which ansible-playbook || pip install ansible --break-system-packages --quiet
+    echo "$VAULT_PASS" > /tmp/dsas_vault_pass.txt
+    chmod 600 /tmp/dsas_vault_pass.txt
 
-                        # Install required Ansible collections
-                        ansible-galaxy collection install \
-                            community.general \
-                            ansible.posix \
-                            --force-with-deps \
-                            --quiet
+    which ansible-playbook || pip install ansible --break-system-packages --quiet
 
-                        # Run the playbook
-                        ansible-playbook ansible/deploy.yml \
-                            -i ansible/inventory/hosts.ini \
-                            --vault-password-file /tmp/dsas_vault_pass.txt \
-                            --private-key "$SSH_KEY_FILE" \
-                            --extra-vars "build_number=${BUILD_NUMBER}" \
-                            --extra-vars "ansible_user=${SSH_USER}" \
-                            -v
-                    '''
+    ansible-galaxy collection install \
+        community.general \
+        ansible.posix \
+        --force-with-deps \
+        --quiet
+
+    ansible-playbook ansible/deploy.yml \
+        -i ansible/inventory/hosts.ini \
+        --vault-password-file /tmp/dsas_vault_pass.txt \
+        --private-key "$SSH_KEY_FILE" \
+        --extra-vars "build_number=${BUILD_NUMBER}" \
+        --extra-vars "ansible_user=${SSH_USER}" \
+        -v
+'''
                 }
             }
         }
