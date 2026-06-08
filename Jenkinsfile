@@ -43,29 +43,34 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════
-        //  PHASE 1 — BUILD & TEST
-        //  ✅ All services confirmed passing — commented out
-        //  to save time. Uncomment when needed.
+        //  PHASE 1 — START TEST INFRASTRUCTURE
         // ══════════════════════════════════════════════════════
 
         stage('Start Test Infrastructure') {
             steps {
                 sh '''
                     cd infrastructure
+
+                    # ── FIX: ensure init-db.sql exists before using it ──
+                    if [ ! -f init-db.sql ]; then
+                        echo "WARNING: init-db.sql not found in infrastructure/ — creating empty placeholder"
+                        touch init-db.sql
+                    fi
+
                     docker compose -p ${COMPOSE_PROJECT} up -d postgres rabbitmq mailhog
-        
+
                     echo ">>> Waiting for Postgres..."
                     for i in $(seq 1 30); do
                         docker compose -p ${COMPOSE_PROJECT} exec -T postgres pg_isready -U dsas_user && break
                         echo "  Postgres not ready yet ($i/30)..."
                         sleep 3
                     done
-        
+
                     echo ">>> Running init-db.sql..."
                     PG_CONTAINER=$(docker compose -p ${COMPOSE_PROJECT} ps -q postgres)
                     docker cp init-db.sql ${PG_CONTAINER}:/tmp/init-db.sql
                     docker compose -p ${COMPOSE_PROJECT} exec -T postgres psql -U dsas_user -d dsas_db -f /tmp/init-db.sql
-        
+
                     echo ">>> Waiting for RabbitMQ..."
                     for i in $(seq 1 30); do
                         docker compose -p ${COMPOSE_PROJECT} exec -T rabbitmq rabbitmq-diagnostics ping && break
@@ -77,48 +82,13 @@ pipeline {
             }
         }
 
-        // stage('Build & Test — Java Services') {
-        //     parallel {
-        //         stage('api-gateway') {
-        //             steps { buildAndTestJavaNoDB('api-gateway') }
-        //         }
-        //         stage('discovery-service') {
-        //             steps { buildAndTestJavaNoDB('discovery-service') }
-        //         }
-        //         stage('auth-service') {
-        //             steps { buildAndTestJavaWithDB('auth-service', 'dsas_auth') }
-        //         }
-        //         stage('disease-service') {
-        //             steps { buildAndTestJavaWithDB('disease-service', 'dsas_diseases') }
-        //         }
-        //         stage('location-service') {
-        //             steps { buildAndTestJavaWithDB('location-service', 'dsas_locations') }
-        //         }
-        //         stage('patient-service') {
-        //             steps { buildAndTestJavaWithDB('patient-service', 'dsas_patients') }
-        //         }
-        //     }
-        // }
-
-        // stage('Build & Test — Python Services') {
-        //     parallel {
-        //         stage('analytics-service') {
-        //             steps { lintAndTestPython('analytics-service') }
-        //         }
-        //         stage('geo-service') {
-        //             steps { lintAndTestPython('geo-service') }
-        //         }
-        //         stage('notification-service') {
-        //             steps { lintAndTestPython('notification-service') }
-        //         }
-        //         stage('report-service') {
-        //             steps { lintAndTestPython('report-service') }
-        //         }
-        //     }
-        // }
-
         // ══════════════════════════════════════════════════════
         //  PHASE 2 — BUILD & PUSH ALL DOCKER IMAGES TO DOCKER HUB
+        //
+        //  Each sub-stage checks whether the image tag for this
+        //  BUILD_NUMBER already exists on Docker Hub.
+        //  If it does → skip (idempotent re-run support).
+        //  If it doesn't → build and push.
         // ══════════════════════════════════════════════════════
 
         stage('Build & Push — Java Images') {
@@ -176,7 +146,6 @@ pipeline {
         // ══════════════════════════════════════════════════════
 
         stage('Deploy to VPS via Ansible') {
-            
             steps {
                 withCredentials([
                     string(
@@ -320,16 +289,25 @@ def lintAndTestPython(String service) {
     """
 }
 
-// ── Build and push Docker image ────────────────────────────────
+// ── Build and push Docker image (idempotent — skips if tag already exists) ──
 def buildAndPushImage(String service, String context) {
     withEnv(["SERVICE=${service}", "CONTEXT=${context}"]) {
         sh '''
-            docker build \
-                -t $DOCKER_USER/$SERVICE:$BUILD_NUMBER \
-                -t $DOCKER_USER/$SERVICE:latest \
-                $CONTEXT
-            docker push $DOCKER_USER/$SERVICE:$BUILD_NUMBER
-            docker push $DOCKER_USER/$SERVICE:latest
+            IMAGE_TAG="${DOCKER_USER}/${SERVICE}:${BUILD_NUMBER}"
+
+            # Check if this exact build tag already exists on Docker Hub
+            if docker manifest inspect "${IMAGE_TAG}" > /dev/null 2>&1; then
+                echo "⏭  Skipping ${IMAGE_TAG} — already pushed in a previous run"
+            else
+                echo "🔨 Building ${IMAGE_TAG}..."
+                docker build \
+                    -t ${DOCKER_USER}/${SERVICE}:${BUILD_NUMBER} \
+                    -t ${DOCKER_USER}/${SERVICE}:latest \
+                    ${CONTEXT}
+                docker push ${DOCKER_USER}/${SERVICE}:${BUILD_NUMBER}
+                docker push ${DOCKER_USER}/${SERVICE}:latest
+                echo "✅ Pushed ${IMAGE_TAG}"
+            fi
         '''
     }
 }
