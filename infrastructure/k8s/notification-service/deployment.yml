@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: notification-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: notification-service
+
+  template:
+    metadata:
+      labels:
+        app: notification-service
+
+    spec:
+      containers:
+        - name: notification-service
+          image: tinfeh/notification-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8087
+          env:
+            - name: EUREKA_SERVER
+              value: "http://eureka-server:8761/eureka"
+            - name: RABBITMQ_URL
+              value: "amqp://dsas_user:dsas_password@rabbitmq:5672/"
+            - name: SMTP_HOST
+              value: "mailhog"
+            - name: SMTP_PORT
+              value: "1025"

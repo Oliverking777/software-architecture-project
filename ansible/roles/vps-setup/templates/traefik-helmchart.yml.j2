@@ -1,0 +1,35 @@
+---
+# k3s HelmChart CRD — deploys Traefik v2 via the k3s Helm controller
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  chart: traefik
+  repo: https://helm.traefik.io/traefik
+  targetNamespace: kube-system
+  valuesContent: |-
+    globalArguments:
+      - "--global.checknewversion=false"
+      - "--global.sendanonymoususage=false"
+
+    additionalArguments:
+      - "--certificatesresolvers.letsencrypt.acme.email={{ letsencrypt_email }}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+
+    ports:
+      web:
+        redirectTo:
+          port: websecure
+      websecure:
+        tls:
+          enabled: true
+
+    persistence:
+      enabled: true
+      size: 128Mi
+
+    service:
+      type: LoadBalancer
