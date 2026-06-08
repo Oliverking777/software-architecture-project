@@ -6,8 +6,8 @@ import { reportAPI, analyticsAPI } from "../services/api.js";
 
 const HISTORY_KEY = "dsas_report_history";
 const COLORS = ["#0EA5E9","#EF4444","#14B8A6","#F59E0B","#8B5CF6","#10B981","#EC4899"];
-const loadHistory = () => { try { return JSON.parse(sessionStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; } };
-const saveHistory = (list) => sessionStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+const loadHistory = () => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; } };
+const saveHistory = (list) => localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
 
 export default function ReportsPage() {
   const [format, setFormat] = useState("pdf");
