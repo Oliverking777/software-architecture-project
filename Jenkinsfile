@@ -25,6 +25,19 @@ pipeline {
             }
         }
 
+        // ── Stage 2: Docker Hub Login ──────────────────────────
+        stage('Docker Hub Login') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'HUB_USER',
+                    passwordVariable: 'HUB_PASS'
+                )]) {
+                    sh 'echo $HUB_PASS | docker login -u $HUB_USER --password-stdin'
+                }
+            }
+        }
+
         // ══════════════════════════════════════════════════════
         //  PHASE 1 — BUILD & TEST
         //  ✅ All services confirmed passing — commented out
@@ -151,6 +164,7 @@ pipeline {
             sh '''
                 cd infrastructure
                 docker compose -p ${COMPOSE_PROJECT} down -v || true
+                docker logout || true
                 echo ">>> Cleanup done"
             '''
         }
@@ -246,21 +260,14 @@ def lintAndTestPython(String service) {
 
 // ── Build and push Docker image ────────────────────────────────
 def buildAndPushImage(String service, String context) {
-    withCredentials([usernamePassword(
-        credentialsId: 'dockerhub-creds',
-        usernameVariable: 'HUB_USER',
-        passwordVariable: 'HUB_PASS'
-    )]) {
-        withEnv(["SERVICE=${service}", "CONTEXT=${context}"]) {
-            sh '''
-                docker build \
-                    -t $HUB_USER/$SERVICE:$BUILD_NUMBER \
-                    -t $HUB_USER/$SERVICE:latest \
-                    $CONTEXT
-                echo $HUB_PASS | docker login -u $HUB_USER --password-stdin
-                docker push $HUB_USER/$SERVICE:$BUILD_NUMBER
-                docker push $HUB_USER/$SERVICE:latest
-            '''
-        }
+    withEnv(["SERVICE=${service}", "CONTEXT=${context}"]) {
+        sh '''
+            docker build \
+                -t $HUB_USER/$SERVICE:$BUILD_NUMBER \
+                -t $HUB_USER/$SERVICE:latest \
+                $CONTEXT
+            docker push $HUB_USER/$SERVICE:$BUILD_NUMBER
+            docker push $HUB_USER/$SERVICE:latest
+        '''
     }
 }
