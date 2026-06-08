@@ -1,0 +1,28 @@
+# Binaries / archives
+kubectl
+*.rar
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.exe
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.log
+
+# Python virtualenvs / caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+.vscode/
+
+# Env files
+.env
+.env.local
