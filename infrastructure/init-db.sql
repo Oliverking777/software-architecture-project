@@ -32,7 +32,7 @@ GRANT ALL PRIVILEGES ON DATABASE dsas_reports   TO dsas_user;
 DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
-    id            BIGSERIAL     PRIMARY KEY,
+    id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
     full_name     VARCHAR(100)  NOT NULL,
     email         VARCHAR(150)  NOT NULL UNIQUE,
     password_hash VARCHAR(255)  NOT NULL,
@@ -112,9 +112,9 @@ INSERT INTO locations (region, district, latitude, longitude) VALUES
 DROP TABLE IF EXISTS patient_cases;
 DROP TABLE IF EXISTS patients;
 
-CREATE TABLE patients (
+CREATE TABLE patient_cases (
     id            BIGSERIAL     PRIMARY KEY,
-    patient_code  VARCHAR(20)   NOT NULL UNIQUE,
+    patient_code  VARCHAR(20)   UNIQUE,
     gender        VARCHAR(10)   NOT NULL CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
     age           INT           NOT NULL CHECK (age > 0 AND age < 150),
     symptoms      TEXT          NOT NULL,
@@ -126,10 +126,10 @@ CREATE TABLE patients (
     report_date   TIMESTAMP
 );
 
-CREATE INDEX idx_cases_disease  ON patient_cases(disease_id);
-CREATE INDEX idx_cases_location ON patient_cases(location_id);
-CREATE INDEX idx_cases_date     ON patient_cases(report_date);
-CREATE INDEX idx_cases_reported ON patient_cases(reported_by);
+CREATE INDEX idx_patients_disease  ON patient_cases(disease);
+CREATE INDEX idx_patients_region   ON patient_cases(region);
+CREATE INDEX idx_patients_date     ON patient_cases(report_date);
+CREATE INDEX idx_patients_reported ON patient_cases(reported_by);
 
 
 -- ============================================================
