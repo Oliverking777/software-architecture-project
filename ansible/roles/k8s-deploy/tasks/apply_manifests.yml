@@ -42,6 +42,19 @@
 
 # ── Apply in order ────────────────────────────────────────────
 
+- name: Install Traefik CRDs (required for Middleware resources)
+  ansible.builtin.shell:
+    cmd: >
+      k3s kubectl apply -f
+      https://raw.githubusercontent.com/traefik/traefik/v2.11/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml
+  register: traefik_crds
+  changed_when: "'created' in traefik_crds.stdout or 'configured' in traefik_crds.stdout"
+
+- name: Wait for Traefik Middleware CRD to be established
+  ansible.builtin.shell:
+    cmd: k3s kubectl wait --for=condition=Established crd/middlewares.traefik.io --timeout=30s
+  changed_when: false
+
 - name: Apply infra PVCs (must exist before deployments)
   ansible.builtin.shell:
     cmd: k3s kubectl apply -f /opt/dsas/k8s/infra/ --namespace={{ k8s_namespace }}
