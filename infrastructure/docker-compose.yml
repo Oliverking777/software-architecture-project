@@ -17,9 +17,9 @@ services:
       - dsas-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dsas_user"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
@@ -27,6 +27,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: dsas_user
       RABBITMQ_DEFAULT_PASS: dsas_password
+      RABBITMQ_ERLANG_COOKIE: "DSAS_STATIC_COOKIE_2024"
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -35,10 +36,11 @@ services:
     networks:
       - dsas-network
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 30s
+      retries: 10
+      start_period: 60s
 
   mailhog:
     image: mailhog/mailhog:latest
@@ -254,6 +256,24 @@ services:
       - dsas-network
     restart: unless-stopped
 
+  # ── Frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../frontend/react-app
+      dockerfile: Dockerfile
+    container_name: dsas-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - api-gateway
+      - analytics-service
+      - report-service
+      - notification-service
+      - geo-service
+    networks:
+      - dsas-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   rabbitmq_data:
@@ -262,4 +282,4 @@ volumes:
 
 networks:
   dsas-network:
-    driver: bridge       
+    driver: bridge

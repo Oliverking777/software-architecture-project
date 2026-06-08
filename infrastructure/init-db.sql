@@ -37,6 +37,81 @@ GRANT ALL PRIVILEGES ON DATABASE dsas_reports   TO dsas_user;
 -- → Tables are created automatically by Hibernate/JPA on
 --   first service startup. Nothing to do here.
 -- ============================================================
+\connect dsas_auth
+
+DROP TABLE IF EXISTS users;
+
+CREATE TABLE users (
+    id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_name     VARCHAR(100)  NOT NULL,
+    email         VARCHAR(150)  NOT NULL UNIQUE,
+    password_hash VARCHAR(255)  NOT NULL,
+    role          VARCHAR(20)   NOT NULL
+                  CHECK (role IN ('ADMIN', 'HEALTH_WORKER', 'ANALYST')),
+    active        BOOLEAN       NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_users_email ON users(email);
+
+INSERT INTO users (full_name, email, password_hash, role) VALUES
+    ('Administrateur', 'admin@dsas.gov',
+     '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+     'ADMIN');
+
+
+-- ============================================================
+-- BASE : dsas_diseases  (appartient à disease-service)
+-- ============================================================
+\connect dsas_diseases
+
+DROP TABLE IF EXISTS diseases;
+
+CREATE TABLE diseases (
+    id              BIGSERIAL    PRIMARY KEY,
+    name            VARCHAR(255) NOT NULL UNIQUE,
+    description     TEXT,
+    threshold_limit INT          NOT NULL DEFAULT 10,
+    updated_at      TIMESTAMP,
+    created_at      TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_diseases_name ON diseases(name);
+
+-- Restore test data
+INSERT INTO diseases (name, description, threshold_limit) VALUES
+    ('Cholera',   'Infection intestinale aiguë causée par Vibrio cholerae', 10),
+    ('Malaria',   'Maladie parasitaire transmise par les moustiques',        50),
+    ('Dengue',    'Maladie virale transmise par le moustique Aedes aegypti', 20),
+    ('Mpox',      'Maladie virale zoonotique causée par le virus Mpox',       5),
+    ('Typhoïde',  'Infection bactérienne causée par Salmonella typhi',       15);
+
+
+-- ============================================================
+-- BASE : dsas_locations  (appartient à location-service)
+-- ============================================================
+\connect dsas_locations
+
+CREATE TABLE locations (
+    id        BIGSERIAL    PRIMARY KEY,        -- ← BIGSERIAL to match Long + IDENTITY
+    region    VARCHAR(100) NOT NULL,
+    district  VARCHAR(100),
+    latitude  DECIMAL(9,6),
+    longitude DECIMAL(9,6),
+    UNIQUE(region, district)
+);
+
+CREATE INDEX idx_locations_region ON locations(region);
+
+-- Données de test
+INSERT INTO locations (region, district, latitude, longitude) VALUES
+    ('Littoral',  'Douala 1',  4.0483, 9.7043),
+    ('Littoral',  'Douala 2',  4.0500, 9.7200),
+    ('Centre',    'Yaoundé 1', 3.8480, 11.5021),
+    ('Centre',    'Yaoundé 2', 3.8700, 11.5200),
+    ('Nord',      'Garoua',    9.3019, 13.3986),
+    ('Ouest',     'Bafoussam', 5.4781, 10.4176),
+    ('Sud-Ouest', 'Buea',      4.1527, 9.2416);
 
 
 -- ============================================================
@@ -51,17 +126,29 @@ GRANT ALL PRIVILEGES ON DATABASE dsas_reports   TO dsas_user;
 --       Run it AFTER all services are up with:
 --         kubectl exec -it <postgres-pod> -- psql -U dsas_user -d dsas_auth -f /tmp/init-db.sql
 -- ============================================================
-\connect dsas_auth
+\connect dsas_patients
 
-INSERT INTO users (full_name, email, password_hash, role, created_at)
-VALUES (
-    'DSAS Administrator',
-    'dsasadmin@gmail.com',
-    '$2b$12$a3OTB2f3FMQUj5.hdZiu/esrmLo7sup4mvNt1M5BUFUQnoKGO.VBG',
-    'ADMIN',
-    NOW()
-)
-ON CONFLICT (email) DO NOTHING;
+DROP TABLE IF EXISTS patient_cases;
+DROP TABLE IF EXISTS patients;
+
+CREATE TABLE patient_cases (
+    id            BIGSERIAL     PRIMARY KEY,
+    patient_code  VARCHAR(20)   UNIQUE,
+    gender        VARCHAR(10)   NOT NULL CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
+    age           INT           NOT NULL CHECK (age > 0 AND age < 150),
+    symptoms      TEXT          NOT NULL,
+    diagnosis     TEXT          NOT NULL,
+    disease       VARCHAR(255)  NOT NULL,
+    region        VARCHAR(100)  NOT NULL,
+    street        VARCHAR(255),
+    reported_by   VARCHAR(255),
+    report_date   TIMESTAMP
+);
+
+CREATE INDEX idx_patients_disease  ON patient_cases(disease);
+CREATE INDEX idx_patients_region   ON patient_cases(region);
+CREATE INDEX idx_patients_date     ON patient_cases(report_date);
+CREATE INDEX idx_patients_reported ON patient_cases(reported_by);
 
 
 -- ============================================================
