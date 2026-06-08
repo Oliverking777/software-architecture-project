@@ -93,7 +93,7 @@ pipeline {
         --private-key "$SSH_KEY_FILE" \
         --extra-vars "ansible_user=${SSH_USER}" \
         --extra-vars "image_tag=${BUILD_NUMBER}" \
-        --extra-vars "deploy_manifests=false" \
+        --extra-vars "deploy_manifests=true" \
         --extra-vars '{"app_deployments": ["api-gateway", "auth-service"]}' \
         -v
 '''
