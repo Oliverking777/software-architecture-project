@@ -14,24 +14,10 @@ export default function LoginPage({ onLogin }) {
     setError("");
     try {
       const data = await authAPI.login(email, password);
-      if (data.accessToken || data.token) {
-        const token = data.accessToken || data.token;
-        sessionStorage.setItem("dsas_token", token);
-        onLogin(token, data);
-      } else {
-        setError("Login failed. Check your credentials.");
-      }
+      sessionStorage.setItem("dsas_token", data.accessToken);
+      onLogin(data.accessToken, data);
     } catch (err) {
-      setError(err.message || "Connection error.");
-      if (email.includes("@")) {
-        const role = email.startsWith("admin") ? "ADMIN"
-          : email.startsWith("analyst") ? "ANALYST" : "HEALTH_WORKER";
-        const name = email.split("@")[0];
-        onLogin("demo-token", {
-          accessToken: "demo-token", email, role,
-          fullName: name.charAt(0).toUpperCase() + name.slice(1),
-        });
-      }
+      setError(err.message || "Login failed. Check your credentials.");
     }
     setLoading(false);
   };

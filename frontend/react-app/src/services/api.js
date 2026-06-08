@@ -1,7 +1,4 @@
-const GATEWAY   = "/gateway";
-const ANALYTICS = "/analytics";
-const REPORTS   = "/reports";
-const GEO       = "/geo";
+const GATEWAY = "/gateway";
 
 const authFetch = async (url, options = {}) => {
   const token = sessionStorage.getItem("dsas_token");
@@ -14,26 +11,25 @@ const authFetch = async (url, options = {}) => {
 };
 
 export const authAPI = {
+  // auth-service wraps responses as ApiResponse<LoginResponse>:
+  // { status, message, data: { token, tokenType, user: { id, email, fullName, role, createdAt } }, timestamp }
   login: async (email, password) => {
-    try {
-      const res = await fetch(`${GATEWAY}/auth-service/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      if (res.ok) return await res.json();
-      throw new Error("Backend unavailable");
-    } catch {
-      if (email.includes("@") && password.length >= 4) {
-        const role = email.startsWith("admin") ? "ADMIN"
-          : email.startsWith("analyst") ? "ANALYST" : "HEALTH_WORKER";
-        return {
-          accessToken: "demo-token", email, role,
-          fullName: email.split("@")[0].charAt(0).toUpperCase() + email.split("@")[0].slice(1),
-        };
-      }
-      throw new Error("Invalid credentials");
+    const res = await fetch(`${GATEWAY}/auth-service/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.data?.token) {
+      throw new Error(body?.message || "Invalid email or password.");
     }
+    const { token, user } = body.data;
+    return {
+      accessToken: token,
+      email: user.email,
+      role: user.role,
+      fullName: user.fullName,
+    };
   },
 };
 
@@ -45,11 +41,11 @@ export const patientAPI = {
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
-  create: async (data) => {
+  create: async (data, reportedBy = "anonymous") => {
     try {
       const res = await authFetch(`${GATEWAY}/patient-service`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Reported-By": "admin" },
+        headers: { "X-Reported-By": reportedBy },
         body: JSON.stringify(data),
       });
       return res.ok ? await res.json() : null;
@@ -93,6 +89,20 @@ export const diseaseAPI = {
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
+  update: async (id, data) => {
+    try {
+      const res = await authFetch(`${GATEWAY}/disease-service/${id}`, {
+        method: "PUT", body: JSON.stringify(data),
+      });
+      return res.ok ? await res.json() : null;
+    } catch { return null; }
+  },
+  delete: async (id) => {
+    try {
+      const res = await authFetch(`${GATEWAY}/disease-service/${id}`, { method: "DELETE" });
+      return res.ok;
+    } catch { return false; }
+  },
 };
 
 export const locationAPI = {
@@ -109,24 +119,46 @@ export const locationAPI = {
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
+  create: async (data) => {
+    try {
+      const res = await authFetch(`${GATEWAY}/location-service`, {
+        method: "POST", body: JSON.stringify(data),
+      });
+      return res.ok ? await res.json() : null;
+    } catch { return null; }
+  },
+  update: async (id, data) => {
+    try {
+      const res = await authFetch(`${GATEWAY}/location-service/${id}`, {
+        method: "PUT", body: JSON.stringify(data),
+      });
+      return res.ok ? await res.json() : null;
+    } catch { return null; }
+  },
+  delete: async (id) => {
+    try {
+      const res = await authFetch(`${GATEWAY}/location-service/${id}`, { method: "DELETE" });
+      return res.ok;
+    } catch { return false; }
+  },
 };
 
 export const analyticsAPI = {
   getStats: async () => {
     try {
-      const res = await fetch(`${ANALYTICS}/api/v1/analytics/stats`);
+      const res = await authFetch(`${GATEWAY}/api/v1/analytics/stats`);
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
   getThresholds: async () => {
     try {
-      const res = await fetch(`${ANALYTICS}/api/v1/analytics/thresholds`);
+      const res = await authFetch(`${GATEWAY}/api/v1/analytics/thresholds`);
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
   getAlerts: async () => {
     try {
-      const res = await fetch(`${ANALYTICS}/api/v1/analytics/alerts`);
+      const res = await authFetch(`${GATEWAY}/api/v1/analytics/alerts`);
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
@@ -135,25 +167,39 @@ export const analyticsAPI = {
 export const geoAPI = {
   getRegions: async () => {
     try {
-      const res = await fetch(`${GEO}/api/v1/geo/regions`);
+      const res = await authFetch(`${GATEWAY}/api/v1/geo/regions`);
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
   getStats: async () => {
     try {
-      const res = await fetch(`${GEO}/api/v1/geo/stats`);
+      const res = await authFetch(`${GATEWAY}/api/v1/geo/stats`);
+      return res.ok ? await res.json() : null;
+    } catch { return null; }
+  },
+  getMap: async () => {
+    try {
+      const res = await authFetch(`${GATEWAY}/api/v1/geo/map`);
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
 };
 
-export const reportAPI = {
-  generate: async (format, caseData) => {
+export const healthAPI = {
+  check: async (path) => {
     try {
-      const res = await fetch(`${REPORTS}/api/v1/reports/generate`, {
+      const res = await authFetch(`${GATEWAY}${path}`);
+      return res.ok;
+    } catch { return false; }
+  },
+};
+
+export const reportAPI = {
+  generate: async (format, caseCounts) => {
+    try {
+      const res = await authFetch(`${GATEWAY}/api/v1/reports/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format, case_counts: caseData }),
+        body: JSON.stringify({ format: format.toUpperCase(), case_counts: caseCounts }),
       });
       return res.ok ? await res.json() : null;
     } catch { return null; }

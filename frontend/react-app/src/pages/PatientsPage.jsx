@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, Badge, Spinner, Modal, Input, Select, Alert, EmptyState } from "../components/UI.jsx";
 import { PageHeader, PrimaryBtn, SecondaryBtn } from "../components/UI.jsx";
-import { patientAPI, diseaseAPI, locationAPI } from "../services/api.js";
+import { patientAPI, diseaseAPI, locationAPI, geoAPI } from "../services/api.js";
 
 const EMPTY_FORM = { patientCode:"", age:"", gender:"MALE", disease:"", region:"", street:"", symptoms:"", diagnosis:"" };
 
-export default function PatientsPage() {
+export default function PatientsPage({ user }) {
   const [patients, setPatients] = useState([]);
   const [diseases, setDiseases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +21,7 @@ export default function PatientsPage() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [geoRegions, setGeoRegions] = useState([]);
 
   const loadPatients = async () => {
     setLoading(true);
@@ -39,6 +40,9 @@ export default function PatientsPage() {
     diseaseAPI.getAll({ size: 100 }).then(d => {
       if (d?.content) setDiseases(d.content);
     });
+    geoAPI.getRegions().then(r => {
+      if (r?.regions) setGeoRegions(r.regions.map(x => x.charAt(0).toUpperCase() + x.slice(1)));
+    });
   }, []);
 
   const handleSubmit = async () => {
@@ -50,7 +54,7 @@ export default function PatientsPage() {
     setError("");
     const result = editPatient
       ? await patientAPI.update(editPatient.id, form)
-      : await patientAPI.create({ ...form, age: parseInt(form.age) });
+      : await patientAPI.create({ ...form, age: parseInt(form.age) }, user?.email || user?.fullName || "anonymous");
     if (result) {
       setSuccess(editPatient ? "Patient updated!" : "Patient created!");
       setShowForm(false);
@@ -89,6 +93,7 @@ export default function PatientsPage() {
 
   const uniqueDiseases = [...new Set(patients.map(p => p.disease).filter(Boolean))];
   const uniqueRegions = [...new Set(patients.map(p => p.region).filter(Boolean))];
+  const regionOptions = [...new Set([...geoRegions, ...uniqueRegions])];
 
   const filtered = patients.filter(p => {
     const s = search.toLowerCase();
@@ -188,7 +193,7 @@ export default function PatientsPage() {
           <Select label="Disease *" value={form.disease} onChange={v=>setForm(f=>({...f,disease:v}))}
             options={[{value:"",label:"Select disease..."}, ...diseases.map(d=>({value:d.name,label:d.name}))]} />
           <Select label="Region *" value={form.region} onChange={v=>setForm(f=>({...f,region:v}))}
-            options={[{value:"",label:"Select region..."}, ...uniqueRegions.map(r=>({value:r,label:r}))]} />
+            options={[{value:"",label:"Select region..."}, ...regionOptions.map(r=>({value:r,label:r}))]} />
           <Input label="District/Street" value={form.street} onChange={v=>setForm(f=>({...f,street:v}))} placeholder="Douala III" />
           <Input label="Patient Code" value={form.patientCode} onChange={v=>setForm(f=>({...f,patientCode:v}))} placeholder="Auto-generated" />
           <div className="col-span-2">

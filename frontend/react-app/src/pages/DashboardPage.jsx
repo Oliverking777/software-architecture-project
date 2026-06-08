@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Card, StatCard, Spinner } from "../components/UI.jsx";
 import { PageHeader, PrimaryBtn, SecondaryBtn } from "../components/UI.jsx";
-import { analyticsAPI, geoAPI, patientAPI, diseaseAPI } from "../services/api.js";
+import { analyticsAPI, geoAPI, patientAPI, diseaseAPI, healthAPI } from "../services/api.js";
 
 const COLORS = ["#0EA5E9","#EF4444","#14B8A6","#F59E0B","#8B5CF6","#10B981","#EC4899"];
 const fmtNum = (n) => n?.toLocaleString() ?? "—";
@@ -17,7 +18,8 @@ const WEEKLY = [
   { day:"Sun", cases:187, recovered:155 },
 ];
 
-export default function DashboardPage({ setPage }) {
+export default function DashboardPage() {
+  const navigate = useNavigate();
   const [analyticsStats, setAnalyticsStats] = useState(null);
   const [analyticsAlerts, setAnalyticsAlerts] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -67,8 +69,8 @@ export default function DashboardPage({ setPage }) {
         subtitle="Real-time surveillance overview across all regions."
         action={
           <div className="flex gap-2">
-            <SecondaryBtn onClick={() => setPage("reports")}>⬇ Export</SecondaryBtn>
-            <PrimaryBtn onClick={() => setPage("patients")}>+ New Patient</PrimaryBtn>
+            <SecondaryBtn onClick={() => navigate("/reports")}>⬇ Export</SecondaryBtn>
+            <PrimaryBtn onClick={() => navigate("/patients")}>+ New Patient</PrimaryBtn>
           </div>
         }
       />
@@ -176,7 +178,7 @@ export default function DashboardPage({ setPage }) {
                 </div>
               ))}
               {analyticsAlerts.length > 4 && (
-                <button onClick={() => setPage("alerts")} className="text-xs text-sky-600 hover:underline w-full text-center">
+                <button onClick={() => navigate("/alerts")} className="text-xs text-sky-600 hover:underline w-full text-center">
                   +{analyticsAlerts.length - 4} more alerts →
                 </button>
               )}
@@ -194,10 +196,10 @@ export default function DashboardPage({ setPage }) {
         <p className="font-semibold text-slate-700 mb-4">Service Status</p>
         <div className="grid grid-cols-4 gap-3">
           {[
-            { name:"Analytics",     url:"/analytics/health" },
-            { name:"Notifications", url:"/notifications/health" },
-            { name:"Reports",       url:"/reports/health" },
-            { name:"Geo",           url:"/geo/health" },
+            { name:"Analytics",     path:"/api/v1/analytics/stats" },
+            { name:"Geo",           path:"/api/v1/geo/regions" },
+            { name:"Patients",      path:"/patient-service/stats/total" },
+            { name:"Diseases",      path:"/disease-service/count" },
           ].map(s => <ServiceStatus key={s.name} {...s} />)}
         </div>
       </Card>
@@ -205,19 +207,19 @@ export default function DashboardPage({ setPage }) {
   );
 }
 
-function ServiceStatus({ name, url }) {
+function ServiceStatus({ name, path }) {
   const [status, setStatus] = useState("checking");
   useEffect(() => {
-    fetch(url)
-      .then(r => r.ok ? setStatus("up") : setStatus("down"))
-      .catch(() => setStatus("down"));
-  }, [url]);
+    let cancelled = false;
+    healthAPI.check(path).then(ok => { if (!cancelled) setStatus(ok ? "up" : "down"); });
+    return () => { cancelled = true; };
+  }, [path]);
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
       <span className={`w-2.5 h-2.5 rounded-full ${status==="up"?"bg-green-500 animate-pulse":status==="down"?"bg-red-500":"bg-yellow-400 animate-pulse"}`} />
       <div>
         <p className="text-xs font-semibold text-slate-700">{name}</p>
-        <p className="text-xs text-slate-400">{url}</p>
+        <p className="text-xs text-slate-400">{path}</p>
       </div>
       <span className={`ml-auto text-xs font-bold ${status==="up"?"text-green-600":status==="down"?"text-red-500":"text-yellow-600"}`}>
         {status==="up"?"UP":status==="down"?"DOWN":"..."}

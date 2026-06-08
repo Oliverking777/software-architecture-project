@@ -1,13 +1,24 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, Spinner, EmptyState } from "../components/UI.jsx";
-import { PageHeader, PrimaryBtn } from "../components/UI.jsx";
-import { analyticsAPI } from "../services/api.js";
+import { Card, Badge, Spinner, Modal, Input, Select, Alert } from "../components/UI.jsx";
+import { PageHeader, PrimaryBtn, SecondaryBtn } from "../components/UI.jsx";
+import { analyticsAPI, diseaseAPI, locationAPI } from "../services/api.js";
+import { loadManualAlerts as loadManual, saveManualAlerts as saveManual } from "../utils/manualAlerts.js";
+
+const emptyForm = { disease: "", region: "", cases: "", threshold: "", severity: "MEDIUM" };
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState([]);
+  const [manualAlerts, setManualAlerts] = useState(loadManual);
+  const [diseaseOptions, setDiseaseOptions] = useState([]);
+  const [regionOptions, setRegionOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
   const [investigated, setInvestigated] = useState({});
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -20,7 +31,21 @@ export default function AlertsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const filtered = alerts.filter(a => filter === "All" || a.severity === filter);
+  useEffect(() => {
+    diseaseAPI.getAll({ size: 100 }).then(d => setDiseaseOptions((d?.content || []).map(x => x.name)));
+    locationAPI.getRegions().then(r => { if (r?.regions) setRegionOptions(r.regions); });
+  }, []);
+
+  const flash = (setter, msg) => { setter(msg); setTimeout(() => setter(""), 3000); };
+
+  const allAlerts = [...manualAlerts, ...alerts];
+
+  const filtered = allAlerts.filter(a => {
+    const matchSeverity = filter === "All" || a.severity === filter;
+    const q = search.toLowerCase();
+    const matchSearch = !q || (a.disease||"").toLowerCase().includes(q) || (a.region||"").toLowerCase().includes(q);
+    return matchSeverity && matchSearch;
+  });
 
   const severityBg = {
     CRITICAL: "bg-red-50 border-red-200",
@@ -34,29 +59,75 @@ export default function AlertsPage() {
     MEDIUM:   "🟡",
   };
 
+  const openCreate = () => {
+    setForm(emptyForm);
+    setError("");
+    setShowForm(true);
+  };
+
+  const handleCreate = () => {
+    if (!form.disease || !form.region || !form.cases || !form.threshold) {
+      setError("All fields are required.");
+      return;
+    }
+    const alert = {
+      disease: form.disease,
+      region: form.region,
+      cases: parseInt(form.cases),
+      threshold: parseInt(form.threshold),
+      severity: form.severity,
+      manual: true,
+      createdAt: new Date().toISOString(),
+    };
+    const next = [alert, ...manualAlerts];
+    setManualAlerts(next);
+    saveManual(next);
+    setShowForm(false);
+    flash(setSuccess, "Alert created and logged.");
+  };
+
+  const handleDismissManual = (idx) => {
+    const next = manualAlerts.filter((_, i) => i !== idx);
+    setManualAlerts(next);
+    saveManual(next);
+  };
+
   return (
     <div className="p-6 space-y-5">
       <PageHeader title="Outbreak Alerts"
-        subtitle={`${alerts.length} active signal${alerts.length!==1?"s":""} · analytics-service`}
+        subtitle={`${allAlerts.length} active signal${allAlerts.length!==1?"s":""} · analytics-service`}
         action={
-          <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Auto-refresh 15s
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              Auto-refresh 15s
+            </div>
+            <PrimaryBtn onClick={openCreate}>+ Create Alert</PrimaryBtn>
           </div>
         }
       />
 
-      <div className="flex gap-2">
-        {["All","CRITICAL","HIGH","MEDIUM"].map(s => (
-          <button key={s} onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
-              ${filter===s ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}>
-            {s} {s !== "All" && alerts.filter(a => a.severity === s).length > 0 &&
-              <span className="ml-1 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-xs">
-                {alerts.filter(a => a.severity === s).length}
-              </span>}
-          </button>
-        ))}
+      {success && <Alert type="success" message={success} />}
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-80">
+          <span className="text-slate-400">🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search alerts by disease or region..."
+            className="flex-1 text-sm outline-none text-slate-600 bg-transparent" />
+        </div>
+        <div className="flex gap-2">
+          {["All","CRITICAL","HIGH","MEDIUM"].map(s => (
+            <button key={s} onClick={() => setFilter(s)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
+                ${filter===s ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}>
+              {s} {s !== "All" && allAlerts.filter(a => a.severity === s).length > 0 &&
+                <span className="ml-1 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-xs">
+                  {allAlerts.filter(a => a.severity === s).length}
+                </span>}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? <Spinner /> : filtered.length === 0 ? (
@@ -64,14 +135,16 @@ export default function AlertsPage() {
           <span className="text-5xl mb-4 block">✅</span>
           <p className="font-semibold text-slate-700">No active alerts</p>
           <p className="text-sm text-slate-400 mt-1">
-            {alerts.length === 0
-              ? "Create patients via API to trigger threshold alerts"
+            {allAlerts.length === 0
+              ? "Create patients via the Patients page to trigger threshold alerts, or log a manual alert above"
               : "No alerts matching this filter"}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          {filtered.map((a, i) => (
+          {filtered.map((a, i) => {
+            const manualIdx = a.manual ? manualAlerts.indexOf(a) : -1;
+            return (
             <Card key={i} className={`p-5 border ${severityBg[a.severity] ?? "border-slate-200"}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -81,10 +154,18 @@ export default function AlertsPage() {
                   </div>
                   <div>
                     <p className="font-bold text-slate-800 capitalize">{a.disease}</p>
-                    <p className="text-xs text-slate-400">Auto-generated · analytics-service</p>
+                    <p className="text-xs text-slate-400">
+                      {a.manual ? "Manually logged · this session" : "Auto-generated · analytics-service"}
+                    </p>
                   </div>
                 </div>
-                <Badge level={a.severity} />
+                <div className="flex items-center gap-2">
+                  <Badge level={a.severity} />
+                  {a.manual && (
+                    <button onClick={() => handleDismissManual(manualIdx)}
+                      className="text-xs text-slate-400 hover:text-red-500" title="Dismiss">✕</button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3 mb-4">
@@ -130,19 +211,55 @@ export default function AlertsPage() {
                 </button>
               </div>
             </Card>
-          ))}
+          );})}
         </div>
       )}
 
-      {!loading && alerts.length === 0 && (
+      {!loading && alerts.length === 0 && manualAlerts.length === 0 && (
         <Card className="p-5 border border-blue-200 bg-blue-50">
           <p className="text-sm font-semibold text-blue-700 mb-2">💡 How to trigger alerts</p>
           <p className="text-xs text-blue-600">
-            Create patients via POST /patient-service — RabbitMQ sends events to analytics-service.
-            When cases exceed the threshold (cholera:10, malaria:50, dengue:20, mpox:5, typhoide:15), alerts appear here automatically.
+            Create patients via the Patients page — RabbitMQ sends events to analytics-service.
+            When cases exceed the disease threshold, alerts appear here automatically. You can also
+            log a manual alert with the "+ Create Alert" button above.
           </p>
         </Card>
       )}
+
+      <Modal open={showForm} onClose={() => { setShowForm(false); setError(""); }} title="Create Alert">
+        <div className="space-y-4">
+          {diseaseOptions.length > 0 ? (
+            <Select label="Disease *" value={form.disease}
+              onChange={v=>setForm(f=>({...f,disease:v}))}
+              options={[{value:"",label:"Select a disease..."}, ...diseaseOptions.map(d=>({value:d,label:d}))]} />
+          ) : (
+            <Input label="Disease *" value={form.disease} onChange={v=>setForm(f=>({...f,disease:v}))} placeholder="e.g. cholera" />
+          )}
+          {regionOptions.length > 0 ? (
+            <Select label="Region *" value={form.region}
+              onChange={v=>setForm(f=>({...f,region:v}))}
+              options={[{value:"",label:"Select a region..."}, ...regionOptions.map(r=>({value:r,label:r}))]} />
+          ) : (
+            <Input label="Region *" value={form.region} onChange={v=>setForm(f=>({...f,region:v}))} placeholder="e.g. Centre" />
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Reported Cases *" type="number" value={form.cases} onChange={v=>setForm(f=>({...f,cases:v}))} placeholder="e.g. 24" />
+            <Input label="Threshold *" type="number" value={form.threshold} onChange={v=>setForm(f=>({...f,threshold:v}))} placeholder="e.g. 10" />
+          </div>
+          <Select label="Severity" value={form.severity}
+            onChange={v=>setForm(f=>({...f,severity:v}))}
+            options={[{value:"MEDIUM",label:"MEDIUM"},{value:"HIGH",label:"HIGH"},{value:"CRITICAL",label:"CRITICAL"}]} />
+        </div>
+        {error && <div className="mt-3"><Alert type="error" message={error} /></div>}
+        <p className="text-xs text-slate-400 mt-3">
+          Note: analytics-service generates alerts automatically from live case data and has no manual-creation
+          endpoint. This alert is logged locally for this session so your team can track it alongside live signals.
+        </p>
+        <div className="flex gap-3 mt-4">
+          <SecondaryBtn onClick={() => setShowForm(false)} className="flex-1">Cancel</SecondaryBtn>
+          <PrimaryBtn onClick={handleCreate} className="flex-1">Create Alert</PrimaryBtn>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -1,79 +1,67 @@
-import { useState, useEffect } from "react";
-import { Sidebar, Topbar } from "./components/Layout.jsx";
-import LoginPage from "./pages/LoginPage.jsx";
-import DashboardPage from "./pages/DashboardPage.jsx";
-import PatientsPage from "./pages/PatientsPage.jsx";
-import DiseasesPage from "./pages/DiseasesPage.jsx";
-import LocationsPage from "./pages/LocationsPage.jsx";
-import AnalyticsPage from "./pages/AnalyticsPage.jsx";
-import AlertsPage from "./pages/AlertsPage.jsx";
-import ReportsPage from "./pages/ReportsPage.jsx";
-import NotificationsPage from "./pages/NotificationsPage.jsx";
-import ProfilePage from "./pages/ProfilePage.jsx";
-import { analyticsAPI } from "./services/api.js";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import Layout from './components/Layout'
+import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
+import PatientsPage from './pages/PatientsPage'
+import AlertsPage from './pages/AlertsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
+import DiseasesPage from './pages/DiseasesPage'
+import LocationsPage from './pages/LocationsPage'
+import NotificationsPage from './pages/NotificationsPage'
+import ProfilePage from './pages/ProfilePage'
+import ReportsPage from './pages/ReportsPage'
 
-export default function App() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  const [page, setPage] = useState("dashboard");
-  const [alertCount, setAlertCount] = useState(0);
+const ProtectedRoute = ({ children }) => {
+  const token = sessionStorage.getItem('dsas_token')
+  return token ? children : <Navigate to="/login" replace />
+}
 
-  useEffect(() => {
-    const token = sessionStorage.getItem("dsas_token");
-    const userData = sessionStorage.getItem("dsas_user");
-    if (token && userData) {
-      try { setUser(JSON.parse(userData)); setAuthenticated(true); } catch {}
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authenticated) return;
-    const poll = async () => {
-      const data = await analyticsAPI.getAlerts();
-      if (data) setAlertCount(data.alerts?.length || 0);
-    };
-    poll();
-    const interval = setInterval(poll, 30000);
-    return () => clearInterval(interval);
-  }, [authenticated]);
+function App() {
+  const [user, setUser] = useState(() => {
+    try {
+      const u = sessionStorage.getItem('dsas_user')
+      return u ? JSON.parse(u) : null
+    } catch { return null }
+  })
 
   const handleLogin = (token, userData) => {
-    sessionStorage.setItem("dsas_token", token);
-    sessionStorage.setItem("dsas_user", JSON.stringify(userData));
-    setUser(userData);
-    setAuthenticated(true);
-  };
+    sessionStorage.setItem('dsas_token', token)
+    sessionStorage.setItem('dsas_user', JSON.stringify(userData))
+    setUser(userData)
+  }
 
   const handleLogout = () => {
-    sessionStorage.clear();
-    setUser(null);
-    setAuthenticated(false);
-    setPage("dashboard");
-  };
-
-  if (!authenticated) return <LoginPage onLogin={handleLogin} />;
-
-  const pages = {
-    dashboard:     <DashboardPage setPage={setPage} />,
-    patients:      <PatientsPage user={user} />,
-    diseases:      <DiseasesPage />,
-    locations:     <LocationsPage />,
-    analytics:     <AnalyticsPage />,
-    alerts:        <AlertsPage />,
-    reports:       <ReportsPage />,
-    notifications: <NotificationsPage />,
-    profile:       <ProfilePage user={user} onLogout={handleLogout} />,
-  };
+    sessionStorage.clear()
+    setUser(null)
+  }
 
   return (
-    <div className="flex bg-slate-50 min-h-screen">
-      <Sidebar active={page} setActive={setPage} alertCount={alertCount} notifCount={3} />
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <Topbar user={user} setPage={setPage} />
-        <main className="flex-1 overflow-auto">
-          {pages[page] ?? pages.dashboard}
-        </main>
-      </div>
-    </div>
-  );
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={
+          user ? <Navigate to="/dashboard" replace /> : <LoginPage onLogin={handleLogin} />
+        } />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout user={user} onLogout={handleLogout} />
+          </ProtectedRoute>
+        }>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="patients" element={<PatientsPage user={user} />} />
+          <Route path="alerts" element={<AlertsPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="diseases" element={<DiseasesPage />} />
+          <Route path="locations" element={<LocationsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="profile" element={<ProfilePage user={user} onLogout={handleLogout} />} />
+          <Route path="reports" element={<ReportsPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
 }
+
+export default App
