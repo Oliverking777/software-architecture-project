@@ -115,28 +115,6 @@ export default function ProfilePage({ user, onLogout }) {
           <PrimaryBtn onClick={handleChangePassword}>Update password</PrimaryBtn>
         </div>
       </Card>
-
-      <Card className="p-5">
-        <p className="font-semibold text-slate-700 mb-4">System Architecture</p>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          {[
-            { label:"api-gateway",        value:":8080 → Point d'entree JWT" },
-            { label:"auth-service",       value:":8081 → /auth-service/**" },
-            { label:"patient-service",    value:":8082 → /patient-service/**" },
-            { label:"disease-service",    value:":8083 → /disease-service/**" },
-            { label:"location-service",   value:":8084 → /location-service/**" },
-            { label:"analytics-service",  value:":8085 (Python FastAPI)" },
-            { label:"report-service",     value:":8086 (Python FastAPI)" },
-            { label:"geo-service",        value:":8088 (Python FastAPI)" },
-          ].map(s => (
-            <div key={s.label} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
-              <span className="text-slate-500 text-xs font-semibold">{s.label}</span>
-              <span className="text-slate-700 font-mono text-xs">{s.value}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
       <Card className="p-6">
         <button onClick={onLogout}
           className="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors">

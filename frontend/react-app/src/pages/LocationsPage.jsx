@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
-import { Card, Spinner, EmptyState, Modal, Input, Alert } from "../components/UI.jsx";
+import { Card, Spinner, EmptyState, Modal, Input, Select, Alert } from "../components/UI.jsx";
 import { PageHeader, PrimaryBtn, SecondaryBtn } from "../components/UI.jsx";
 import { locationAPI, geoAPI } from "../services/api.js";
 import GeoMap from "../components/GeoMap.jsx";
 import { loadManualAlerts } from "../utils/manualAlerts.js";
+
+const CAMEROON_REGIONS = [
+  "Adamaoua", "Centre", "Est", "Extrême-Nord", "Littoral",
+  "Nord", "Nord-Ouest", "Ouest", "Sud", "Sud-Ouest",
+];
 
 const emptyForm = { region: "", district: "", latitude: "", longitude: "" };
 const ALERT_SEVERITY_TO_GEO = { CRITICAL: "high", HIGH: "high", MEDIUM: "medium" };
@@ -115,14 +120,24 @@ export default function LocationsPage() {
     }
   };
 
-  const displayData = locations.length > 0 ? locations : geoRegions.map((r, i) => ({
-    id: i+1,
-    region: r.region.charAt(0).toUpperCase() + r.region.slice(1),
-    district: r.districts?.[0] || "",
-    latitude: r.coordinates?.lat,
-    longitude: r.coordinates?.lon,
-    readOnly: true,
-  }));
+  // Always propose the 10 official regions of Cameroon: real locations are shown as-is,
+  // and any region with no recorded location yet gets a read-only placeholder card
+  // (using geo-service coordinates when available).
+  const presentRegions = new Set(locations.map(l => (l.region || "").toLowerCase()));
+  const regionStubs = CAMEROON_REGIONS
+    .filter(r => !presentRegions.has(r.toLowerCase()))
+    .map(r => {
+      const geo = geoRegions.find(g => (g.region || "").toLowerCase() === r.toLowerCase());
+      return {
+        id: `region-${r}`,
+        region: r,
+        district: geo?.districts?.[0] || "No location recorded yet",
+        latitude: geo?.coordinates?.lat ?? null,
+        longitude: geo?.coordinates?.lon ?? null,
+        readOnly: true,
+      };
+    });
+  const displayData = [...locations, ...regionStubs];
 
   const filtered = displayData.filter(l =>
     !search || (l.region||"").toLowerCase().includes(search.toLowerCase())
@@ -224,7 +239,8 @@ export default function LocationsPage() {
       <Modal open={showForm} onClose={() => { setShowForm(false); setError(""); }}
         title={editing ? "Edit Location" : "Add New Location"}>
         <div className="space-y-4">
-          <Input label="Region *" value={form.region} onChange={v=>setForm(f=>({...f,region:v}))} placeholder="e.g. Centre" />
+          <Select label="Region *" value={form.region} onChange={v=>setForm(f=>({...f,region:v}))}
+            options={[{ value: "", label: "Select a region..." }, ...CAMEROON_REGIONS.map(r => ({ value: r, label: r }))]} />
           <Input label="District *" value={form.district} onChange={v=>setForm(f=>({...f,district:v}))} placeholder="e.g. Yaoundé I" />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Latitude" type="number" value={form.latitude} onChange={v=>setForm(f=>({...f,latitude:v}))} placeholder="3.848" />

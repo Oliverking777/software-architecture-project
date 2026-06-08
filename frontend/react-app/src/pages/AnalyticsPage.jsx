@@ -2,49 +2,73 @@ import { useState, useEffect } from "react";
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, Spinner, EmptyState } from "../components/UI.jsx";
 import { PageHeader, SecondaryBtn } from "../components/UI.jsx";
-import { analyticsAPI } from "../services/api.js";
+import { analyticsAPI, patientAPI } from "../services/api.js";
+import { loadManualAlerts } from "../utils/manualAlerts.js";
 
 const COLORS = ["#0EA5E9","#EF4444","#14B8A6","#F59E0B","#8B5CF6","#10B981","#EC4899"];
 const fmtNum = (n) => n?.toLocaleString() ?? "—";
 
-const WEEKLY = [
-  { day:"Mon", cases:145, recovered:110 },
-  { day:"Tue", cases:162, recovered:125 },
-  { day:"Wed", cases:178, recovered:140 },
-  { day:"Thu", cases:210, recovered:165 },
-  { day:"Fri", cases:225, recovered:180 },
-  { day:"Sat", cases:198, recovered:160 },
-  { day:"Sun", cases:187, recovered:155 },
-];
+const buildWeeklyTrend = (patients) => {
+  const days = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    days.push({ key: d.toISOString().split("T")[0], day: d.toLocaleDateString("en-US", { weekday: "short" }), cases: 0 });
+  }
+  patients.forEach(p => {
+    const raw = (p.reportDate || p.reportedAt || "").toString().split("T")[0];
+    const match = days.find(d => d.key === raw);
+    if (match) match.cases += 1;
+  });
+  return days;
+};
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState("30D");
   const [stats, setStats] = useState(null);
   const [thresholds, setThresholds] = useState(null);
   const [alerts, setAlerts] = useState([]);
+  const [manualAlerts, setManualAlerts] = useState(loadManualAlerts);
+  const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [s, t, a] = await Promise.all([
+      const [s, t, a, p] = await Promise.all([
         analyticsAPI.getStats(),
         analyticsAPI.getThresholds(),
         analyticsAPI.getAlerts(),
+        patientAPI.getAll({ size: 100 }),
       ]);
       if (s) setStats(s);
       if (t) setThresholds(t);
       if (a) setAlerts(a.alerts || []);
+      if (p?.content) setPatients(p.content);
+      setManualAlerts(loadManualAlerts());
       setLoading(false);
     };
     load();
     const interval = setInterval(async () => {
-      const s = await analyticsAPI.getStats();
+      const [s, a, p] = await Promise.all([
+        analyticsAPI.getStats(),
+        analyticsAPI.getAlerts(),
+        patientAPI.getAll({ size: 100 }),
+      ]);
       if (s) setStats(s);
-      const a = await analyticsAPI.getAlerts();
       if (a) setAlerts(a.alerts || []);
+      if (p?.content) setPatients(p.content);
+      setManualAlerts(loadManualAlerts());
     }, 15000);
-    return () => clearInterval(interval);
+    // Manually-logged alerts live in localStorage (set from the Alerts page) — re-read them
+    // whenever the tab regains focus so a freshly created alert shows up here too.
+    const onFocus = () => setManualAlerts(loadManualAlerts());
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus); };
   }, []);
+
+  const allAlerts = [...manualAlerts, ...alerts];
+  const weeklyTrend = buildWeeklyTrend(patients);
 
   const caseEntries = stats?.case_counts ? Object.entries(stats.case_counts) : [];
   const diseaseData = caseEntries.reduce((acc, [key, v]) => {
@@ -83,14 +107,14 @@ export default function AnalyticsPage() {
       {stats && (
         <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 border border-green-200 rounded-xl px-3 py-2 w-fit">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          Live · {stats.total_tracked} combinations tracked · Auto-refresh 15s
+          Live · {stats.total_tracked} combinations tracked · {allAlerts.length} active alert{allAlerts.length!==1?"s":""} · Auto-refresh 15s
         </div>
       )}
 
       <div className="grid grid-cols-4 gap-4">
         {[
           { label:"Total Cases",    value: fmtNum(totalCases),              color:"text-sky-600" },
-          { label:"Active Alerts",  value: alerts.length,                   color:"text-red-600" },
+          { label:"Active Alerts",  value: allAlerts.length,                color:"text-red-600" },
           { label:"Diseases",       value: Object.keys(diseaseData).length || "—", color:"text-teal-600" },
           { label:"Regions",        value: Object.keys(regionData).length  || "—", color:"text-amber-600" },
         ].map(s => (
@@ -175,9 +199,9 @@ export default function AnalyticsPage() {
 
       <Card className="p-5">
         <p className="font-semibold text-slate-700 mb-1">Weekly Pulse</p>
-        <p className="text-xs text-slate-400 mb-4">Cases vs recoveries</p>
+        <p className="text-xs text-slate-400 mb-4">New cases reported per day — last 7 days · Live from patient-service</p>
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={WEEKLY}>
+          <AreaChart data={weeklyTrend}>
             <defs>
               <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.15} />
@@ -186,10 +210,9 @@ export default function AnalyticsPage() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
             <XAxis dataKey="day" tick={{ fontSize:11, fill:"#94A3B8" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize:11, fill:"#94A3B8" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize:11, fill:"#94A3B8" }} axisLine={false} tickLine={false} allowDecimals={false} />
             <Tooltip contentStyle={{ borderRadius:12, fontSize:12 }} />
-            <Area type="monotone" dataKey="cases" stroke="#0EA5E9" fill="url(#gA)" strokeWidth={2.5} dot={{ r:3 }} />
-            <Area type="monotone" dataKey="recovered" stroke="#10B981" fill="none" strokeWidth={2} dot={{ r:3 }} />
+            <Area type="monotone" dataKey="cases" name="New cases" stroke="#0EA5E9" fill="url(#gA)" strokeWidth={2.5} dot={{ r:3 }} />
           </AreaChart>
         </ResponsiveContainer>
       </Card>
