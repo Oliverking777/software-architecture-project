@@ -1,0 +1,54 @@
+---
+# =============================================================
+#  Bootstrap — creates the Kubernetes namespace and injects
+#  all application secrets so deployments can reference them
+#  via secretKeyRef instead of plaintext env vars.
+# =============================================================
+
+- name: Ensure dsas namespace exists
+  ansible.builtin.command:
+    cmd: k3s kubectl create namespace {{ k8s_namespace }}
+  register: ns_result
+  failed_when: ns_result.rc != 0 and 'AlreadyExists' not in ns_result.stderr
+  changed_when: ns_result.rc == 0
+
+- name: Create app-secrets Kubernetes Secret
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl create secret generic app-secrets
+      --namespace={{ k8s_namespace }}
+      --from-literal=DB_USER={{ db_user }}
+      --from-literal=DB_PASSWORD={{ db_password }}
+      --from-literal=DB_NAME={{ db_name }}
+      --from-literal=RABBITMQ_USER={{ rabbitmq_user }}
+      --from-literal=RABBITMQ_PASSWORD={{ rabbitmq_password }}
+      --from-literal=GRAFANA_ADMIN_USER={{ grafana_admin_user }}
+      --from-literal=GRAFANA_ADMIN_PASSWORD={{ grafana_admin_password }}
+      --from-literal=JWT_SECRET={{ jwt_secret }}
+      --save-config
+      --dry-run=client -o yaml
+  register: secret_yaml
+  changed_when: false
+
+- name: Apply app-secrets (upsert)
+  ansible.builtin.shell:
+    cmd: echo "{{ secret_yaml.stdout }}" | k3s kubectl apply -f -
+  changed_when: true
+
+- name: Create Docker Hub imagePullSecret
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl create secret docker-registry dockerhub-secret
+      --namespace={{ k8s_namespace }}
+      --docker-server=https://index.docker.io/v1/
+      --docker-username={{ dockerhub_username }}
+      --docker-password={{ dockerhub_password }}
+      --save-config
+      --dry-run=client -o yaml
+  register: pull_secret_yaml
+  changed_when: false
+
+- name: Apply imagePullSecret (upsert)
+  ansible.builtin.shell:
+    cmd: echo "{{ pull_secret_yaml.stdout }}" | k3s kubectl apply -f -
+  changed_when: true

@@ -1,0 +1,36 @@
+---
+# =============================================================
+#  Post-deploy verification — checks pods are healthy and
+#  prints a summary. Fails the playbook (and therefore the
+#  Jenkins build) if any deployment is not Available.
+# =============================================================
+
+- name: Check all app deployments are Available
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl wait deployment/{{ item }}
+      --namespace={{ k8s_namespace }}
+      --for=condition=Available
+      --timeout=120s
+  loop: "{{ app_deployments }}"
+  changed_when: false
+
+- name: Fetch pod status summary
+  ansible.builtin.command:
+    cmd: k3s kubectl get pods --namespace={{ k8s_namespace }} -o wide
+  register: pod_status
+  changed_when: false
+
+- name: Print pod status
+  ansible.builtin.debug:
+    msg: "{{ pod_status.stdout_lines }}"
+
+- name: Fetch ingress summary
+  ansible.builtin.command:
+    cmd: k3s kubectl get ingress --namespace={{ k8s_namespace }}
+  register: ingress_status
+  changed_when: false
+
+- name: Print ingress status
+  ansible.builtin.debug:
+    msg: "{{ ingress_status.stdout_lines }}"

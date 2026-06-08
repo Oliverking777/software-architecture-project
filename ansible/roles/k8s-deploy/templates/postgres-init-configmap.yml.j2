@@ -1,0 +1,24 @@
+---
+# This ConfigMap was referenced in deployment (2).yml but was missing.
+# It creates all required databases on first boot.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-sql
+  namespace: {{ k8s_namespace }}
+data:
+  init.sql: |
+    -- Create databases for each service
+    CREATE DATABASE dsas_patients;
+    CREATE DATABASE dsas_analytics;
+    CREATE DATABASE dsas_locations;
+    CREATE DATABASE dsas_diseases;
+    CREATE DATABASE dsas_auth;
+
+    -- Grant all privileges to the app user
+    GRANT ALL PRIVILEGES ON DATABASE dsas_db       TO {{ db_user }};
+    GRANT ALL PRIVILEGES ON DATABASE dsas_patients  TO {{ db_user }};
+    GRANT ALL PRIVILEGES ON DATABASE dsas_analytics TO {{ db_user }};
+    GRANT ALL PRIVILEGES ON DATABASE dsas_locations TO {{ db_user }};
+    GRANT ALL PRIVILEGES ON DATABASE dsas_diseases  TO {{ db_user }};
+    GRANT ALL PRIVILEGES ON DATABASE dsas_auth      TO {{ db_user }};
