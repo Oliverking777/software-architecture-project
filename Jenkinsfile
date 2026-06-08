@@ -187,7 +187,7 @@ pipeline {
                         chmod 600 /tmp/dsas_vault_pass.txt
 
                         # Install Ansible if not present on Jenkins agent
-                        which ansible-playbook || pip install ansible --quiet
+                        which ansible-playbook || pip install ansible --break-system-packages --quiet
 
                         # Install required Ansible collections
                         ansible-galaxy collection install \
