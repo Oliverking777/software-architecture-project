@@ -23,13 +23,18 @@ public class JwtAuthInterceptor extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
 
-    private static final String[] PUBLIC_PATHS = {
-            "/auth-service/login",
-            "/auth-service/register",
-            "/actuator/prometheus",
-            "/actuator/health",
-            "/actuator"
-    };
+   private static final String[] PUBLIC_PATHS = {
+        "/auth-service/login",
+        "/auth-service/register",
+        "/auth-service/api/v1/auth/login",
+        "/auth-service/api/v1/auth/register",
+        "/patient-service",
+        "/disease-service",
+        "/location-service",
+        "/actuator/prometheus",
+        "/actuator/health",
+        "/actuator"
+};
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -47,7 +52,7 @@ public class JwtAuthInterceptor extends OncePerRequestFilter {
 
         // Step 2: Allow public routes through (using startsWith to avoid partial-path spoofing)
         for (String publicPath : PUBLIC_PATHS) {
-            if (path.startsWith(publicPath) || path.equals(publicPath)) {
+            if (path.startsWith(publicPath)) {
                 filterChain.doFilter(request, response);
                 return;
             }
