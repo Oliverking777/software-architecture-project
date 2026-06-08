@@ -1,14 +1,19 @@
-name: DSAS - VPA Setup and Kubenetes deploy
-hosts: vps
-become: true
-gather_facts: true
+---
+# =============================================================
+#  DSAS — Master Deployment Playbook
+# =============================================================
 
-var_files:
-  - vault/secrete.yml
+- name: DSAS - VPS Setup and Kubernetes deploy
+  hosts: vps
+  become: true
+  gather_facts: true
 
-roles:
-  - role: vps-setup
-    tags: [setup,infra]
+  vars_files:
+    - vault/secrets.yml
 
-  - role: k8s-deploy
-    tags: [deploy,k8s]
+  roles:
+    - role: vps-setup
+      tags: [setup, infra]
+
+    - role: k8s-deploy
+      tags: [deploy, k8s]

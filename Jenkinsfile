@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  DSAS — Unified CI/CD Jenkins Pipeline
-//  Order: Infra (Docker) → Build/Test → Push Images
+//  Order: Infra (Docker) → Build/Test → Push Images → Deploy
 //  Deploy: handled by Ansible (VPS setup)
 //  Frontend: excluded (not ready yet)
 // ═══════════════════════════════════════════════════════════════
@@ -9,8 +9,9 @@ pipeline {
     agent any
 
     environment {
-        COMPOSE_PROJECT = "dsas-test-${BUILD_NUMBER}"
-        DOCKER_USER     = 'tinfeh'
+        COMPOSE_PROJECT           = "dsas-test-${BUILD_NUMBER}"
+        DOCKER_USER               = 'tinfeh'
+        ANSIBLE_HOST_KEY_CHECKING = 'False'
     }
 
     triggers {
@@ -157,6 +158,61 @@ pipeline {
                 }
             }
         }
+
+        // ══════════════════════════════════════════════════════
+        //  PHASE 3 — DEPLOY TO VPS VIA ANSIBLE
+        //  Runs only on main/master branch.
+        //  Requires Jenkins credentials:
+        //    - vps-ssh-key        (SSH Private Key — to access VPS)
+        //    - ansible-vault-pass (Secret Text — to decrypt secrets.yml)
+        // ══════════════════════════════════════════════════════
+
+        stage('Deploy to VPS via Ansible') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                }
+            }
+            steps {
+                withCredentials([
+                    string(
+                        credentialsId: 'ansible-vault-pass',
+                        variable: 'VAULT_PASS'
+                    ),
+                    sshUserPrivateKey(
+                        credentialsId: 'vps-ssh-key',
+                        keyFileVariable:  'SSH_KEY_FILE',
+                        usernameVariable: 'SSH_USER'
+                    )
+                ]) {
+                    sh '''
+                        # Write vault password to a temp file
+                        echo "$VAULT_PASS" > /tmp/dsas_vault_pass.txt
+                        chmod 600 /tmp/dsas_vault_pass.txt
+
+                        # Install Ansible if not present on Jenkins agent
+                        which ansible-playbook || pip install ansible --quiet
+
+                        # Install required Ansible collections
+                        ansible-galaxy collection install \
+                            community.general \
+                            ansible.posix \
+                            --force-with-deps \
+                            --quiet
+
+                        # Run the playbook
+                        ansible-playbook ansible/deploy.yml \
+                            -i ansible/inventory/hosts.ini \
+                            --vault-password-file /tmp/dsas_vault_pass.txt \
+                            --private-key "$SSH_KEY_FILE" \
+                            --extra-vars "build_number=${BUILD_NUMBER}" \
+                            --extra-vars "ansible_user=${SSH_USER}" \
+                            -v
+                    '''
+                }
+            }
+        }
     }
 
     // ── Post Actions ───────────────────────────────────────────
@@ -166,7 +222,11 @@ pipeline {
                 cd infrastructure
                 docker compose -p ${COMPOSE_PROJECT} down -v || true
                 docker logout || true
-                echo ">>> Cleanup done"
+                echo ">>> Docker cleanup done"
+
+                # Remove vault password temp file
+                rm -f /tmp/dsas_vault_pass.txt
+                echo ">>> Vault pass cleanup done"
             '''
         }
         success {
