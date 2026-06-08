@@ -1,0 +1,45 @@
+---
+# =============================================================
+#  Shared variables — safe to commit, no secrets here
+# =============================================================
+
+# ── Docker Hub ────────────────────────────────────────────────
+dockerhub_username: "tinfeh"
+image_tag: "{{ build_number | default('latest') }}"
+
+# ── Kubernetes ────────────────────────────────────────────────
+k8s_namespace: "default"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+# ── Domain & TLS ─────────────────────────────────────────────
+domain: "dsas-app.tsgpcorporation.com"
+letsencrypt_email: "tinfeholiverchowaine@gmail.com"
+
+# ── k3s ──────────────────────────────────────────────────────
+k3s_version: "v1.29.4+k3s1"
+k3s_install_dir: "/usr/local/bin"
+
+# ── cert-manager ─────────────────────────────────────────────
+cert_manager_version: "v1.14.5"
+
+# ── App services (rolling restart on every build) ────────────
+app_deployments:
+  - discovery-service
+  - api-gateway
+  - auth-service
+  - patient-service
+  - location-service
+  - disease-service
+  - analytics-service
+  - geo-service
+  - notification-service
+  - report-service
+  - frontend
+
+# ── Infra services (applied but NOT restarted on each build) ─
+infra_deployments:
+  - postgres
+  - mailhog
+  - rabbitmq
+  - prometheus
+  - grafana

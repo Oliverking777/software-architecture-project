@@ -1,0 +1,91 @@
+---
+# =============================================================
+#  Copy manifests to VPS and apply them with kubectl.
+#  Order matters: infra first (PVCs, Secrets, ConfigMaps),
+#  then services, then ingress.
+# =============================================================
+
+- name: Create manifest staging directory on VPS
+  ansible.builtin.file:
+    path: /opt/dsas/k8s/{{ item }}
+    state: directory
+    mode: "0755"
+  loop:
+    - infra
+    - services
+
+# ── Copy manifests ────────────────────────────────────────────
+
+- name: Copy infra manifests to VPS
+  ansible.builtin.copy:
+    src: "files/infra/"
+    dest: /opt/dsas/k8s/infra/
+    mode: "0644"
+
+- name: Copy service manifests to VPS
+  ansible.builtin.copy:
+    src: "files/services/"
+    dest: /opt/dsas/k8s/services/
+    mode: "0644"
+
+- name: Template postgres-init ConfigMap
+  ansible.builtin.template:
+    src: postgres-init-configmap.yml.j2
+    dest: /opt/dsas/k8s/infra/postgres-init-configmap.yml
+    mode: "0644"
+
+- name: Template ingress manifest (domain substitution)
+  ansible.builtin.template:
+    src: ingress.yml.j2
+    dest: /opt/dsas/k8s/ingress.yml
+    mode: "0644"
+
+# ── Apply in order ────────────────────────────────────────────
+
+- name: Install Traefik CRDs (required for Middleware resources)
+  ansible.builtin.shell:
+    cmd: >
+      k3s kubectl apply -f
+      https://raw.githubusercontent.com/traefik/traefik/v2.11/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml
+  register: traefik_crds
+  changed_when: "'created' in traefik_crds.stdout or 'configured' in traefik_crds.stdout"
+
+- name: Wait for Traefik Middleware CRD to be established
+  ansible.builtin.shell:
+    cmd: k3s kubectl wait --for=condition=Established crd/middlewares.traefik.io --timeout=30s
+  changed_when: false
+
+- name: Apply infra PVCs (must exist before deployments)
+  ansible.builtin.shell:
+    cmd: k3s kubectl apply -f /opt/dsas/k8s/infra/ --namespace={{ k8s_namespace }}
+  changed_when: true
+
+- name: Wait for Postgres to be ready
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl rollout status deployment/postgres
+      --namespace={{ k8s_namespace }}
+      --timeout=120s
+  changed_when: false
+  retries: 3
+  delay: 10
+
+- name: Wait for RabbitMQ to be ready
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl rollout status deployment/rabbitmq
+      --namespace={{ k8s_namespace }}
+      --timeout=120s
+  changed_when: false
+  retries: 3
+  delay: 10
+
+- name: Apply service manifests
+  ansible.builtin.shell:
+    cmd: k3s kubectl apply -f /opt/dsas/k8s/services/ --namespace={{ k8s_namespace }}
+  changed_when: true
+
+- name: Apply ingress
+  ansible.builtin.command:
+    cmd: k3s kubectl apply -f /opt/dsas/k8s/ingress.yml --namespace={{ k8s_namespace }}
+  changed_when: true

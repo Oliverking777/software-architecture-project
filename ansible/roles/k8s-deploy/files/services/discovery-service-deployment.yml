@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: discovery-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: discovery-service
+
+  template:
+    metadata:
+      labels:
+        app: discovery-service
+
+    spec:
+      containers:
+        - name: discovery-service
+          image: tinfeh/discovery-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8761
